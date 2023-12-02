@@ -1,7 +1,10 @@
-cmake_minimum_required(VERSION 3.10)
+# Select debug/release variant: % cmake -DCMAKE_BUILD_TYPE=Debug/Release ../..
+# Build and run: make run-day-XX
 
+cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (APPLE OR UNIX OR LINUX)
     set(WARNING_FLAGS_CXX -Wall -Wextra -Wpedantic -Wvla -Wshadow -Wundef -Wmisleading-indentation -Wnull-dereference -Wswitch-default -Wno-newline-eof -Wno-unused-function -Wno-unused-parameter)
@@ -10,22 +13,42 @@ endif ()
 
 project(aoc-2023)
 set(CMAKE_DEBUG_POSTFIX _dbg)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin") 
+set(CMAKE_VERBOSE_MAKEFILE OFF)
 
-set(TARGETS day-01)
+include(CheckIPOSupported)
+check_ipo_supported(RESULT ipo_available)
+
+add_library(aocio ${CMAKE_CURRENT_SOURCE_DIR}/aocio/aocio.cpp)
+set_target_properties(aocio PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+target_include_directories(aocio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/aocio/") 
+target_compile_options(aocio PRIVATE ${WARNING_FLAGS_CXX} $<$<CONFIG:Debug>:-fsanitize=undefined,address -g3 -Og>)
+target_link_options(aocio PRIVATE ${WARNING_FLAGS_CXX} $<$<CONFIG:Debug>:-fsanitize=undefined,address -g3 -Og>)
+if(ipo_available AND (NOT CMAKE_BUILD_TYPE MATCHES Debug) AND (NOT CMAKE_BUILD_TYPE MATCHES RelWithDebInfo))
+    message("-- IPO enabled")
+    set_property(TARGET aocio PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
+set(TARGETS day-02) # Add the other days as you please.
 
 foreach(current_target IN LISTS TARGETS)
     add_executable(${current_target} ${current_target}/${current_target}.cpp)
     set_target_properties(${current_target} PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-    target_include_directories(${current_target} PRIVATE $loop_var/) 
+    target_include_directories(${current_target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/aocio/") 
     target_compile_options(${current_target} PRIVATE ${WARNING_FLAGS_CXX} $<$<CONFIG:Debug>:-fsanitize=undefined,address -g3 -Og>)
-    target_link_options(${current_target} PRIVATE ${WARNING_WARNING_FLAGS_CXX} $<$<CONFIG:Debug>:-fsanitize=undefined,address -g3 -Og> )
+    target_link_options(${current_target} PRIVATE ${WARNING_FLAGS_CXX} $<$<CONFIG:Debug>:-fsanitize=undefined,address -g3 -Og>)
+    target_link_libraries(${current_target} aocio)
 
-    include(CheckIPOSupported)
-    check_ipo_supported(RESULT ipo_available)
-    if (ipo_available AND CMAKE_BUILD_TYPE EQUAL "RELEASE" OR CMAKE_BUILD_TYPE EQUAL "RelWithDebInfo")
-        set_target_properties(${current_target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif() 
-
+    target_compile_definitions(${current_target} PRIVATE AOC_INPUT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/${current_target}/input.txt")
+    target_compile_definitions(${current_target} PRIVATE AOC_INPUT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/${current_target}/")
+    if(ipo_available AND (NOT CMAKE_BUILD_TYPE MATCHES Debug) AND (NOT CMAKE_BUILD_TYPE MATCHES RelWithDebInfo))
+        message("-- IPO enabled")
+        set_property(TARGET ${current_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
+    
+    add_custom_target("run-${current_target}"
+        DEPENDS ${current_target}
+        COMMAND ${current_target}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
+)
 endforeach(current_target)
-
-
