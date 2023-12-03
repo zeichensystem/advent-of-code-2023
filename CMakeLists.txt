@@ -29,7 +29,9 @@ if(ipo_available AND (NOT CMAKE_BUILD_TYPE MATCHES Debug) AND (NOT CMAKE_BUILD_T
     set_property(TARGET aocio PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
-set(TARGETS day-02) # Add the other days as you please.
+set(TARGETS day-01 day-02 day-03) # Add the other days as you please.
+
+list(LENGTH TARGETS NUM_TARGETS)
 
 foreach(current_target IN LISTS TARGETS)
     add_executable(${current_target} ${current_target}/${current_target}.cpp)
@@ -42,7 +44,6 @@ foreach(current_target IN LISTS TARGETS)
     target_compile_definitions(${current_target} PRIVATE AOC_INPUT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/${current_target}/input.txt")
     target_compile_definitions(${current_target} PRIVATE AOC_INPUT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/${current_target}/")
     if(ipo_available AND (NOT CMAKE_BUILD_TYPE MATCHES Debug) AND (NOT CMAKE_BUILD_TYPE MATCHES RelWithDebInfo))
-        message("-- IPO enabled")
         set_property(TARGET ${current_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
     
@@ -50,5 +51,14 @@ foreach(current_target IN LISTS TARGETS)
         DEPENDS ${current_target}
         COMMAND ${current_target}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
-)
+    )
 endforeach(current_target)
+
+# TODO...
+add_custom_target("run-all"
+    DEPENDS ${TARGETS}
+    COMMAND day-01
+    COMMAND day-02
+    COMMAND day-03
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
+)

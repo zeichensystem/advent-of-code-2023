@@ -22,9 +22,15 @@ namespace aocio
 {
 bool file_getlines(std::string_view fname, std::vector<std::string>& lines);
 
+void line_tokenise(const std::string& line, const std::string& delims, std::vector<std::string>& tokens, bool preserve_delims=false);
+
 inline void print_day() 
 {
     std::string day_name {std::filesystem::path(AOC_INPUT_DIR).parent_path().filename()};
+    
+    if (day_name.size()) {
+        day_name[0] = std::toupper(day_name[0]);
+    }
 
     std::string debug_release;
     #ifdef NDEBUG
