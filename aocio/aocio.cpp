@@ -22,8 +22,13 @@ bool aocio::file_getlines(std::string_view fname, std::vector<std::string>& line
     return true;
 }
 
-void aocio::line_tokenise(const std::string& line, const std::string& delims, std::vector<std::string>& tokens, bool preserve_delims)
+void aocio::line_tokenise(const std::string& line, const std::string& delims, const std::string& preserved_delims, std::vector<std::string>& tokens)
 {
+    for (char d : preserved_delims) {
+        if (delims.find(d) == std::string::npos) {
+            throw "Preserved delim not in delims";
+        }
+    }
     std::string::size_type start_pos = 0;
 
     while (start_pos < line.size()) {
@@ -35,8 +40,8 @@ void aocio::line_tokenise(const std::string& line, const std::string& delims, st
         if (token.size()) {
             tokens.push_back(token);
         }
-
-        if (preserve_delims && token_end_pos != std::string::npos) {
+        
+        if (token_end_pos != std::string::npos && preserved_delims.size() && preserved_delims.find(line[token_end_pos]) != std::string::npos) {
             tokens.push_back(std::string{line[token_end_pos]});
         }
 

@@ -86,7 +86,9 @@
         "stop_token": "cpp",
         "thread": "cpp",
         "__tree": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "unordered_set": "cpp",
+        "ranges": "cpp"
     },
     "cmake.configureOnOpen": true,
     "cmake.buildDirectory": "${workspaceFolder}/build/${buildType}"
