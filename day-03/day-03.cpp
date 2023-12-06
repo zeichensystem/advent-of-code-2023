@@ -18,7 +18,8 @@
                     I didn't consider I have to save the row in NumInfo, without that two different numbers might compare equal when they aren't (which can lead to misclassification of gears)
         - Use std::ssize instead of casting to int where necessary
         - Use std::isdigit
-        - I wonder which puzzle will be the first one to overflow int or int64_t...
+        - I wonder which puzzle will be the first one to overflow int or int64_t... 
+          (Update from the future: It's day 5 part 1)
 
 */
 
