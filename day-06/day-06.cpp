@@ -151,7 +151,7 @@ int64_t part_two(const std::vector<std::string>& lines)
     double min_hold_time_two = (-r.duration_ms - std::sqrtl(discr)) / -2.; 
     assert(min_hold_time_one >= 0 || min_hold_time_two >= 0);
 
-    int64_t min_hold_time = std::floorl(min_hold_time_one >= 0 ? min_hold_time_one : min_hold_time_two);
+    int64_t min_hold_time = std::floorl(min_hold_time_one <= min_hold_time_two ? min_hold_time_one : min_hold_time_two);
     while ((r.duration_ms - min_hold_time) * min_hold_time <= r.record_dist_mm) {
         min_hold_time += 1; 
     }
