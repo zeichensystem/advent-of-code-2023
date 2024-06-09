@@ -48,3 +48,23 @@ void aocio::line_tokenise(const std::string& line, const std::string& delims, co
         start_pos = token_end_pos + 1;
     }
 }
+
+int aocio::parse_num(const std::string &str)
+{
+    size_t num_read = 0; 
+    int n = std::stoi(str, &num_read); 
+    if (num_read == 0) {
+        throw "Invalid token: expected number";
+    }
+    return n; 
+} 
+
+int64_t aocio::parse_num_i64(const std::string& str)
+{
+    size_t num_read = 0; 
+    int64_t n = std::stoll(str, &num_read); 
+    if (num_read == 0) {
+        throw "Invalid token: expected number";
+    }
+    return n; 
+} 

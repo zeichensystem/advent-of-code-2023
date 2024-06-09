@@ -21,8 +21,10 @@
 namespace aocio 
 {
 bool file_getlines(std::string_view fname, std::vector<std::string>& lines);
-
 void line_tokenise(const std::string& line, const std::string& delims, const std::string& preserved_delims, std::vector<std::string>& tokens);
+
+int parse_num(const std::string &str);
+int64_t parse_num_i64(const std::string& str);
 
 inline void print_day() 
 {
