@@ -29,7 +29,7 @@ if(ipo_available AND (NOT CMAKE_BUILD_TYPE MATCHES Debug) AND (NOT CMAKE_BUILD_T
     set_property(TARGET aocio PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
-set(TARGETS day-01 day-02 day-03 day-04 day-05 day-06 day-07) # Add the other days as you please.
+set(TARGETS day-01 day-02 day-03 day-04 day-05 day-06 day-07 day-08) # Add the other days as you please.
 
 list(LENGTH TARGETS NUM_TARGETS)
 
@@ -64,5 +64,6 @@ add_custom_target("run-all"
     COMMAND day-05
     COMMAND day-06
     COMMAND day-07
+    COMMAND day-08
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
 )
