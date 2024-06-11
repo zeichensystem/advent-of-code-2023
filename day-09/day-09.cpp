@@ -8,9 +8,10 @@
 
     Solutions: 
         - Part 1: 1708206096
-        - Part 2:         
+        - Part 2: 1050     
     Notes: 
-   
+        - That one was easy I think! 
+        - Learned about std::adjacent_difference and std::back_inserter
 */
 
 void parse_histories(const std::vector<std::string>& lines, std::vector<std::vector<int>> &result)
@@ -26,7 +27,7 @@ void parse_histories(const std::vector<std::string>& lines, std::vector<std::vec
     }
 }
 
-int part_one(const std::vector<std::string>& lines)
+int part_one(const std::vector<std::string>& lines, bool backwards = false)
 {
     std::vector<std::vector<int>> histories; 
     parse_histories(lines, histories); 
@@ -37,10 +38,10 @@ int part_one(const std::vector<std::string>& lines)
         diffs.push_back(history); 
         do {
             const std::vector<int>& prev = diffs.back(); 
-            std::vector<int> diff; 
             assert(prev.size() > 1); 
+            std::vector<int> diff; 
             std::adjacent_difference(prev.begin(), prev.end(), std::back_inserter(diff)); 
-            diff.erase(diff.begin()); 
+            diff.erase(diff.begin());
             assert(diff.size() == prev.size() - 1); 
             diffs.push_back(diff); 
         } while (!std::all_of(diffs.back().begin(), diffs.back().end(), [](int a) -> bool {return a == 0;}));
@@ -49,8 +50,9 @@ int part_one(const std::vector<std::string>& lines)
             if (d == diffs.rbegin()) {
                 d->push_back(0); 
             } else {
-                int next = d->back() + prev->back(); 
-                d->push_back(next);
+                // Notice: We still push next to the end of the vector if backwards == true.
+                int next = !backwards ? d->back() + prev->back() : d->front() - prev->back(); 
+                d->push_back(next); 
             } 
         } 
         result += diffs.front().back(); 
@@ -58,10 +60,9 @@ int part_one(const std::vector<std::string>& lines)
     return result; 
 }
 
-
-int64_t part_two(const std::vector<std::string>& lines)
+int part_two(const std::vector<std::string>& lines)
 {
-  return -1; 
+    return part_one(lines, true);
 }
 
 int main()
@@ -77,7 +78,7 @@ int main()
     try {
         int p1 = part_one(lines);  
         std::cout << "Part 1: " << p1 << "\n";
-        int64_t p2 = part_two(lines);
+        int p2 = part_two(lines);
         std::cout << "Part 2: " << p2 << "\n";
     } catch (const char* err) {
         std::cerr << "Error: " << err << "\n";
