@@ -89,7 +89,8 @@
         "set": "cpp",
         "unordered_set": "cpp",
         "ranges": "cpp",
-        "shared_mutex": "cpp"
+        "shared_mutex": "cpp",
+        "list": "cpp"
     },
     "cmake.configureOnOpen": true,
     "cmake.buildDirectory": "${workspaceFolder}/build/${buildType}"

@@ -223,3 +223,59 @@ public:
         return os;
     }
 };
+
+// #include<list>
+
+// cf. https://stackoverflow.com/questions/2504178/lru-cache-design/54272232#54272232
+
+// template<typename K, typename V, uint32_t csize = 1024>
+// class LRUCacheList
+// {
+
+// private:
+//     std::list<K>items;
+//     std::unordered_map <K, std::pair<V, typename std::list<K>::iterator>> keyValuesMap;
+
+// public:
+//     LRUCacheList() {
+//     }
+
+//     void insert(const K& key, const V& value) {
+//         auto pos = keyValuesMap.find(key);
+//         if (pos == keyValuesMap.end()) {
+//             items.push_front(key);
+//             keyValuesMap.insert({key, { value, items.begin() }});
+//             if (keyValuesMap.size() > csize) {
+//                 keyValuesMap.erase(items.back());
+//                 items.pop_back();
+//             }
+//         }
+//         else {
+//             items.erase(pos->second.second);
+//             items.push_front(key);
+//             keyValuesMap.insert({key, { value, items.begin() }});
+//         }
+//     }
+
+//     V get_copy(const K& key) {
+//         auto pos = keyValuesMap.find(key);
+//         if (pos == keyValuesMap.end()) {
+//             throw std::out_of_range("LRUCacheList::get_copy: key not in cache."); 
+//         }
+
+//         items.erase(pos->second.second);
+//         items.push_front(key);
+//         keyValuesMap[key] = { pos->second.first, items.begin() };
+//         V value = pos->second.first;
+//         return value;
+//     }
+
+//     void clear() {
+//         keyValuesMap.clear();
+//         items.clear();
+//     }
+
+//     bool contains(const K& key) {
+//         return keyValuesMap.contains(key);
+//     }
+// };
