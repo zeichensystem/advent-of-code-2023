@@ -39,7 +39,7 @@ if(ipo_available AND (NOT CMAKE_BUILD_TYPE MATCHES Debug) AND (NOT CMAKE_BUILD_T
 
 endif()
 
-set(TARGETS day-01 day-02 day-03 day-04 day-05 day-06 day-07 day-08 day-09 day-10 day-11 day-12 day-13) # Add the other days as you please.
+set(TARGETS day-01 day-02 day-03 day-04 day-05 day-06 day-07 day-08 day-09 day-10 day-11 day-12 day-13 day-14) # Add the other days as you please.
 
 list(LENGTH TARGETS NUM_TARGETS)
 
@@ -81,6 +81,8 @@ add_custom_target("run-all"
     COMMAND day-11
     COMMAND day-12
     COMMAND day-13
+    COMMAND day-14
+
 
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
 )
