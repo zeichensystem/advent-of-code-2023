@@ -1,6 +1,5 @@
 #include <unordered_map>
 #include <unordered_set>
-
 #include "../aocio/aocio.hpp"
 
 /*
@@ -8,19 +7,25 @@
   
     Solutions: 
         - Part 1: 30705
-        - Part 2: 
+        - Part 2: 44615
     Notes: 
-
+        - Part 2 was pretty easy because I had already solved part 1
+          with a hashtable counting how many times each mirror start position
+          occurs in each pattern: 
+          For part 1, I check if the count is equal to the pattern's 
+          number of rows/cols, for part 2, I check if the count is 
+          equal to the pattern's number of rows/cols minus one. 
 */
 
 enum class Axis {Vertical, Horizontal};
 
-struct Pattern {
+struct Pattern 
+{
     std::vector<std::string> lines; 
 
-    std::optional<int> reflection(Axis axis) const
+    std::optional<int> reflection(Axis axis, bool find_smudge = false) const
     {
-        std::unordered_map<int, int> mirror_starts; 
+        std::unordered_map<int, int> mirror_starts;
 
         auto line_mirror_start = [&mirror_starts](const std::string& line) {
             for (int left = 0; left < std::ssize(line) - 1; ++left) {
@@ -51,7 +56,9 @@ struct Pattern {
                 line_mirror_start(line); 
             }
             for (const auto& [mirror_start, cnt] : mirror_starts) {
-                if (cnt == std::ssize(lines)) {
+                if (find_smudge && cnt == std::ssize(lines) - 1) {
+                    return mirror_start; 
+                } else if (!find_smudge && cnt == std::ssize(lines)) {
                     return mirror_start;
                 }
             }
@@ -66,12 +73,14 @@ struct Pattern {
                 line_mirror_start(column); 
             }
             for (const auto& [mirror_start, cnt] : mirror_starts) {
-                if (cnt == std::ssize(lines.at(0))) {
+                if (find_smudge && cnt == std::ssize(lines.at(0)) - 1) {
                     return mirror_start;
+                } else if (!find_smudge && cnt == std::ssize(lines.at(0))) {
+                    return mirror_start; 
                 }
             }
             break;
-            
+
         default:
             throw "Not an axis";
             break;
@@ -89,7 +98,6 @@ struct Pattern {
         }
         return os;
     }
-          
 }; 
 
 void parse_patterns(const std::vector<std::string>& lines, std::vector<Pattern>& result)
@@ -97,27 +105,31 @@ void parse_patterns(const std::vector<std::string>& lines, std::vector<Pattern>&
     Pattern pat; 
     for (const auto& line: lines) {
         if (line.size() == 0) {
-            result.push_back(pat);
+            if (pat.lines.size() != 0) {
+                result.push_back(pat);
+            }
             pat = {}; 
         } else {
             pat.lines.push_back(line);
         }
     }
-    result.push_back(pat);
+    if (pat.lines.size() != 0) {
+        result.push_back(pat);
+    }
 }
 
-int64_t part_one(const std::vector<std::string>& lines)
+int64_t part_one(const std::vector<std::string>& lines, bool find_smudge = false)
 {
     std::vector<Pattern> patterns;
     parse_patterns(lines, patterns); 
 
     int64_t cols = 0, rows = 0; 
     for (const auto& pat : patterns) {
-        auto mirror_vert = pat.reflection(Axis::Vertical); 
+        auto mirror_vert = pat.reflection(Axis::Vertical, find_smudge ); 
         if (mirror_vert.has_value()) {
             cols += mirror_vert.value(); 
         }
-        auto mirror_horiz = pat.reflection(Axis::Horizontal); 
+        auto mirror_horiz = pat.reflection(Axis::Horizontal, find_smudge); 
         if (mirror_horiz.has_value()) {
             rows += mirror_horiz.value();
         }
@@ -129,7 +141,7 @@ int64_t part_one(const std::vector<std::string>& lines)
 
 int64_t part_two(const std::vector<std::string>& lines)
 {
-    return -1; 
+    return part_one(lines, true);
 }
 
 int main()
