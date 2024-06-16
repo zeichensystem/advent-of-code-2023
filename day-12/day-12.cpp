@@ -1,28 +1,43 @@
-#include <unordered_set>
-#include <chrono>
+#include <unordered_map>
 #include "../aocio/aocio.hpp"
+#include "../lru-cache/lru-cache.hpp"
 
 /*
     Problem: https://adventofcode.com/2023/day/12
   
     Solutions: 
         - Part 1: 8075
-        - Part 2: 
+        - Part 2: 4232520187524
     Notes: 
-        - Implemented both dumb brute-force and slightly smarter back-tracking for Part 1. 
-          Backtracking is about 30 times faster (in release mode, in debug mode with asan, brute force is even slower).
-          
-        - I first implemented the backtracking solution, which did not work. Then I implemented the brute force
-          solution, but it also did not yield the right solution. That way I found out my is_valid_arrangement function
-          was broken, and not my backtracking approach. Funnily enough, the validation function worked for the example inputs,
-          but failed on the real input. 
-          The backtracking approach also worked for the example inputs with the broken validation function, 
-          but the brute-force approach did't work for either input with the broken validation function. 
+        - Re-implemented find_arrangements to make it cacheable. 
+        - Implemented a simple LRU-cache. It's not really useful, using an unordred_map is just as fast here. 
+          But it should use less memory for smaller lru sizes, which is cool. 
 */
 
 struct SpringRecord {
     std::string condition; 
-    std::vector<int>damaged_groups; 
+    std::vector<int> damaged_groups; 
+
+    void unfold()
+    {
+        std::string cond_unfolded = ""; 
+        for (int i = 0; i < 5; ++i) {
+            cond_unfolded += condition; 
+            if (i != 4) {
+                cond_unfolded += "?";
+            }
+
+        }
+        condition = cond_unfolded; 
+
+        std::vector<int> dg_unfolded; 
+        for (int i = 0; i < 5; ++i) {
+            for (int n : damaged_groups) {
+                dg_unfolded.push_back(n);
+            }
+        }
+        damaged_groups = dg_unfolded; 
+    }
 
     friend std::ostream& operator<<(std::ostream& os, const SpringRecord& sr) 
     {
@@ -52,187 +67,122 @@ void parse_spring_records(const std::vector<std::string>& lines, std::vector<Spr
     }
 }
 
-bool is_valid_arrangement(const SpringRecord& s)
+struct State {
+    char cur_sym; 
+    int str_idx, dmg_group_idx, dmg_spring_len; 
+    bool operator==(const State&) const = default;
+}; 
+
+template<>
+struct std::hash<State>
 {
-      assert(s.condition.find("?") == std::string::npos); 
+    std::size_t operator()(const State& s) const noexcept
+    {
+        std::size_t hash = std::hash<std::string>{}(std::string(1, s.cur_sym) + "," + std::to_string(s.str_idx) + "," + std::to_string(s.dmg_group_idx) + "," + std::to_string(s.dmg_spring_len));
+        return hash;
+    }
+};
 
-      size_t str_idx = 0; 
-      for (size_t i = 0; i < s.damaged_groups.size(); ++i) {
-        size_t damaged_len = s.damaged_groups.at(i); 
-        size_t start = s.condition.find('#', str_idx); 
-        if (start == std::string::npos) {
-            return false; 
-        } else if (s.condition.size() - start < damaged_len) {
-            return false;
-        }
-
-        size_t end = s.condition.find_first_not_of("#", start); 
-        if (end == std::string::npos) {
-            end = s.condition.size(); 
-        }
-        assert(end >= start);
-        size_t len = end - start; 
-
-        if (len != damaged_len) {
-            return false; 
-        }
-
-        str_idx = end; 
-        if (i != s.damaged_groups.size() - 1) {
-            if (str_idx >= s.condition.size()) {
-                return false; 
-            }
-            if (s.condition.at(str_idx) != '.') { // Enforce gap.
-                return false; 
-            }
-        }
-      }
-
-      if (str_idx < s.condition.size()) {
-        return s.condition.find("#", str_idx) == std::string::npos;
-      }
-
-      return true;
-}
-
-int64_t find_arrangements_bruteforce(SpringRecord &s, size_t str_idx = 0, size_t depth = 0)
-{
-    int64_t total = 0; 
-    auto unknown_idx = s.condition.find("?", str_idx);
-
-    if (unknown_idx == std::string::npos) {
-        bool is_valid = is_valid_arrangement(s); 
-        return is_valid ? 1 : 0; 
+template <uint32_t LRU_SIZE>
+int64_t find_arrangements(const SpringRecord &s, LRUCache<State, int64_t, LRU_SIZE>& lru, int dmg_group_idx = 0, int str_idx = 0, int dmg_spring_len = 0, char cur_sym = ' ')
+{    
+    if (cur_sym == ' ') {
+        cur_sym = s.condition.at(0);
     }
 
-    // Try '#'.
-    s.condition.at(unknown_idx) = '#';
-    total += find_arrangements_bruteforce(s, unknown_idx + 1, depth + 1); 
-    // Try '.'
-    s.condition.at(unknown_idx) = '.';
-    total += find_arrangements_bruteforce(s, unknown_idx + 1, depth + 1); 
-    // Undo
-    s.condition.at(unknown_idx) = '?';
+    const State state = {.cur_sym = cur_sym, .str_idx = str_idx, .dmg_group_idx = dmg_group_idx, .dmg_spring_len = dmg_spring_len};
     
-    return total;
-}
-
-int64_t find_arrangements_backtrack(SpringRecord &s, size_t str_idx = 0, size_t dmg_group_idx = 0)
-{
-    if (dmg_group_idx == s.damaged_groups.size()) {
-        std::replace(s.condition.begin(), s.condition.end(), '?', '.');
-        return is_valid_arrangement(s) ? 1 : 0;
+    if (lru.contains(state)) {
+        return lru.get_copy(state);   
     }
 
-    const size_t damaged_len = s.damaged_groups.at(dmg_group_idx);
-    const std::string damaged_str = std::string(damaged_len, '#');
-    assert(damaged_len == damaged_str.size());
-
-    int64_t total = 0; 
-    const std::string saved = s.condition.substr(0, s.condition.size()); 
-
-    auto after_loop = [&s, &str_idx](size_t area_end) -> void {
-        for (size_t i = str_idx; i < area_end; ++i) {
-            if (s.condition.at(i) == '?') {
-                s.condition.at(i) = '.';
-            }
+    if (str_idx == std::ssize(s.condition)) {
+        if (dmg_group_idx == std::ssize(s.damaged_groups) - 1 && dmg_spring_len == s.damaged_groups.at(dmg_group_idx)) {
+            return 1; 
+        } else {
+            return 0; 
         }
-        str_idx = area_end; 
-        if (str_idx < s.condition.size()) {
-            if (s.condition.at(str_idx) == '#') {
-                str_idx += 1;
-            } else {
-                s.condition.at(str_idx) = '.'; // Enforce gap.
-            }
-        }
-    };
-
-    while (str_idx < s.condition.size()) {
-        size_t area_start = s.condition.find_first_of("?#", str_idx);  
-        size_t area_end = s.condition.find_first_not_of("?#", area_start); 
-        if (area_end == std::string::npos) {
-            area_end = s.condition.size();
-        }
-
-        if (area_start == std::string::npos) {
-            after_loop(area_end); 
-            continue;
-        }
-
-        assert(area_end >= area_start);
-        size_t area_size = area_end - area_start;
-        if (area_size < damaged_len) {
-            after_loop(area_end);
-            continue;
-        }
-
-        const size_t str_size = s.condition.size();
-
-        for (size_t offset = 0; offset <= area_size - damaged_len; ++offset) {
-            size_t start = area_start + offset; 
-            size_t end = start + damaged_len; // one beyond the area
-            if (end < s.condition.size()) {
-                if (s.condition.at(end) == '#') {
-                    continue;
-                } else if (s.condition.at(end) == '?') { // Enforce gaps.
-                    s.condition.at(end) = '.';
-                }
-            }
-            assert(end - start == damaged_len); 
-
-            // Try move.
-            for (size_t i = str_idx; i < start; ++i) {
-                if (s.condition.at(i) == '?') {
-                    s.condition.at(i) = '.';
-                }
-            }
-            s.condition.replace(start, damaged_len, damaged_str); 
-            assert(str_size == s.condition.size());
-            total += find_arrangements_backtrack(s, end, dmg_group_idx + 1); 
-
-            // Undo move. 
-            s.condition.replace(0, saved.size(), saved);
-            assert(str_size == s.condition.size());
-        }
-        after_loop(area_end);
     }
-    // Undo all moves.
-    s.condition.replace(0, saved.size(), saved);
-    return total;
+
+    char spring_sym = cur_sym; 
+    switch (spring_sym) 
+    {   
+    case '#': {
+        int64_t total = 0; 
+        if (dmg_spring_len > s.damaged_groups.at(dmg_group_idx)) {
+            total = 0; 
+        } else {
+            cur_sym = str_idx + 1 < std::ssize(s.condition) ? s.condition.at(str_idx + 1) : ' '; 
+            total = find_arrangements(s, lru, dmg_group_idx, str_idx + 1, dmg_spring_len + 1, cur_sym); 
+        }
+        lru.insert(state, total);
+        return total; 
+    }
+
+    case '?': {
+        int64_t hash_subtotal = find_arrangements(s, lru, dmg_group_idx, str_idx, dmg_spring_len, '#');
+        int64_t dot_subtotal = find_arrangements(s, lru, dmg_group_idx, str_idx, dmg_spring_len, '.'); 
+        int64_t total = dot_subtotal + hash_subtotal; 
+        lru.insert(state, total);
+        return total;
+    }
+
+    case '.': {
+        bool prev_was_damaged = dmg_spring_len != 0; 
+        int64_t total = 0; 
+        if (prev_was_damaged && dmg_spring_len != s.damaged_groups.at(dmg_group_idx)) {
+            total = 0; 
+        } else if (prev_was_damaged && dmg_group_idx + 1 == std::ssize(s.damaged_groups)) {
+            total = dmg_spring_len == s.damaged_groups.at(dmg_group_idx) && s.condition.find("#", str_idx) == std::string::npos ? 1 : 0; 
+        } else {
+            cur_sym = str_idx + 1 < std::ssize(s.condition) ? s.condition.at(str_idx + 1) : ' '; 
+            total = find_arrangements(s, lru, prev_was_damaged ? dmg_group_idx + 1 : dmg_group_idx, str_idx + 1, 0, cur_sym);
+        }
+        lru.insert(state, total);
+        return total;
+    }
+    
+    default:
+        throw "Invalid spring condition.";
+    }
 }
+
+constexpr uint32_t lru_size = 1024; 
+using LRUCache_FindArr = LRUCache<State, int64_t, lru_size>; 
+std::unique_ptr<LRUCache_FindArr> lru = std::make_unique<LRUCache_FindArr>(); 
 
 int64_t part_one(const std::vector<std::string>& lines)
 {
     std::vector<SpringRecord> springs; 
     parse_spring_records(lines, springs);
 
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    int64_t total_bruteforce = 0; 
-    for (auto& s : springs) {
-        int64_t n = find_arrangements_bruteforce(s); 
-        total_bruteforce += n; 
-    }
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "Brute forced in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms\n";
+    assert(lru.get());
 
-    begin = std::chrono::steady_clock::now();
-    int64_t total_backtrack = 0; 
+    int64_t total = 0; 
     for (auto& s : springs) {
-        int64_t n = find_arrangements_backtrack(s); 
-        total_backtrack += n; 
+        lru->clear(); 
+        int64_t n = find_arrangements<lru_size>(s, *lru.get()); 
+        total += n; 
     }
-    end = std::chrono::steady_clock::now();
-    std::cout << "Back tracked in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms\n";
-
-    if (total_backtrack != total_bruteforce) {
-        throw "Error: diverging solutions";
-    } 
-    return total_backtrack; 
+    
+    return total; 
 }
 
 int64_t part_two(const std::vector<std::string>& lines)
 {
-    return -1; 
+    std::vector<SpringRecord> springs; 
+    parse_spring_records(lines, springs);
+    
+    assert(lru.get()); 
+
+    int64_t total = 0; 
+    for (auto& s :springs) {
+        s.unfold();
+        lru->clear(); 
+        total += find_arrangements<lru_size>(s, *lru.get()); 
+    }
+
+    return total; 
 }
 
 int main()
