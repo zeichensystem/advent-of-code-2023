@@ -1,4 +1,3 @@
-#include <unordered_map>
 #include "../aocio/aocio.hpp"
 #include "../lru-cache/lru-cache.hpp"
 
@@ -10,7 +9,7 @@
         - Part 2: 4232520187524
     Notes: 
         - Re-implemented find_arrangements to make it cacheable. 
-        - Implemented a simple LRU-cache. It's not really useful, using an unordred_map is just as fast here. 
+        - Implemented a simple LRU-cache. It's not really useful, using an unordered_map is just as fast here. 
           But it should use less memory for smaller lru sizes, which is cool. 
 */
 
@@ -78,12 +77,15 @@ struct std::hash<State>
 {
     std::size_t operator()(const State& s) const noexcept
     {
-        std::size_t hash = std::hash<std::string>{}(std::string(1, s.cur_sym) + "," + std::to_string(s.str_idx) + "," + std::to_string(s.dmg_group_idx) + "," + std::to_string(s.dmg_spring_len));
-        return hash;
+        std::size_t h1 = std::hash<char>{}(s.cur_sym); 
+        std::size_t h2 = std::hash<int>{}(s.str_idx); 
+        std::size_t h3 = std::hash<int>{}(s.dmg_group_idx); 
+        std::size_t h4 = std::hash<int>{}(s.dmg_spring_len); 
+        return ((h1 ^ (h2 << 1)) ^ (h3 << 1)) ^ (h4 << 1); // cf. https://en.cppreference.com/w/cpp/utility/hash (last retrieved 2024-06-17)
     }
 };
 
-template <uint32_t LRU_SIZE>
+template <std::size_t LRU_SIZE>
 int64_t find_arrangements(const SpringRecord &s, LRUCache<State, int64_t, LRU_SIZE>& lru, int dmg_group_idx = 0, int str_idx = 0, int dmg_spring_len = 0, char cur_sym = ' ')
 {    
     if (cur_sym == ' ') {
@@ -91,11 +93,11 @@ int64_t find_arrangements(const SpringRecord &s, LRUCache<State, int64_t, LRU_SI
     }
 
     const State state = {.cur_sym = cur_sym, .str_idx = str_idx, .dmg_group_idx = dmg_group_idx, .dmg_spring_len = dmg_spring_len};
-    
-    if (lru.contains(state)) {
-        return lru.get_copy(state);   
-    }
 
+    if (auto cached = lru.get_copy(state); cached) {
+        return cached.value();
+    }
+ 
     if (str_idx == std::ssize(s.condition)) {
         if (dmg_group_idx == std::ssize(s.damaged_groups) - 1 && dmg_spring_len == s.damaged_groups.at(dmg_group_idx)) {
             return 1; 
@@ -104,32 +106,40 @@ int64_t find_arrangements(const SpringRecord &s, LRUCache<State, int64_t, LRU_SI
         }
     }
 
+    int64_t total = 0;
     char spring_sym = cur_sym; 
+
     switch (spring_sym) 
     {   
     case '#': {
-        int64_t total = 0; 
         if (dmg_spring_len > s.damaged_groups.at(dmg_group_idx)) {
             total = 0; 
         } else {
             cur_sym = str_idx + 1 < std::ssize(s.condition) ? s.condition.at(str_idx + 1) : ' '; 
             total = find_arrangements(s, lru, dmg_group_idx, str_idx + 1, dmg_spring_len + 1, cur_sym); 
         }
-        lru.insert(state, total);
-        return total; 
+        break;
     }
 
     case '?': {
-        int64_t hash_subtotal = find_arrangements(s, lru, dmg_group_idx, str_idx, dmg_spring_len, '#');
-        int64_t dot_subtotal = find_arrangements(s, lru, dmg_group_idx, str_idx, dmg_spring_len, '.'); 
-        int64_t total = dot_subtotal + hash_subtotal; 
-        lru.insert(state, total);
-        return total;
+        int64_t hash_subtotal = 0;
+        int64_t dot_subtotal = 0; 
+        if (dmg_spring_len == s.damaged_groups.at(dmg_group_idx)) {
+            hash_subtotal = 0; 
+        } else {
+            hash_subtotal = find_arrangements(s, lru, dmg_group_idx, str_idx, dmg_spring_len, '#');
+        }
+        if (dmg_spring_len != 0 && dmg_spring_len < s.damaged_groups.at(dmg_group_idx)) {
+            dot_subtotal = 0; 
+        } else {
+            dot_subtotal = find_arrangements(s, lru, dmg_group_idx, str_idx, dmg_spring_len, '.'); 
+        }
+        total = dot_subtotal + hash_subtotal; 
+        break;
     }
 
     case '.': {
         bool prev_was_damaged = dmg_spring_len != 0; 
-        int64_t total = 0; 
         if (prev_was_damaged && dmg_spring_len != s.damaged_groups.at(dmg_group_idx)) {
             total = 0; 
         } else if (prev_was_damaged && dmg_group_idx + 1 == std::ssize(s.damaged_groups)) {
@@ -138,30 +148,30 @@ int64_t find_arrangements(const SpringRecord &s, LRUCache<State, int64_t, LRU_SI
             cur_sym = str_idx + 1 < std::ssize(s.condition) ? s.condition.at(str_idx + 1) : ' '; 
             total = find_arrangements(s, lru, prev_was_damaged ? dmg_group_idx + 1 : dmg_group_idx, str_idx + 1, 0, cur_sym);
         }
-        lru.insert(state, total);
-        return total;
+        break;
     }
     
     default:
         throw "Invalid spring condition.";
     }
+
+    lru.insert(state, total);
+    return total; 
 }
 
-constexpr uint32_t lru_size = 1024; 
+constexpr std::size_t lru_size = 256; 
 using LRUCache_FindArr = LRUCache<State, int64_t, lru_size>; 
-std::unique_ptr<LRUCache_FindArr> lru = std::make_unique<LRUCache_FindArr>(); 
+LRUCache_FindArr lru = LRUCache_FindArr(); 
 
 int64_t part_one(const std::vector<std::string>& lines)
 {
     std::vector<SpringRecord> springs; 
     parse_spring_records(lines, springs);
 
-    assert(lru.get());
-
     int64_t total = 0; 
     for (auto& s : springs) {
-        lru->clear(); 
-        int64_t n = find_arrangements<lru_size>(s, *lru.get()); 
+        lru.clear(); 
+        int64_t n = find_arrangements<lru_size>(s, lru); 
         total += n; 
     }
     
@@ -173,13 +183,11 @@ int64_t part_two(const std::vector<std::string>& lines)
     std::vector<SpringRecord> springs; 
     parse_spring_records(lines, springs);
     
-    assert(lru.get()); 
-
     int64_t total = 0; 
     for (auto& s :springs) {
         s.unfold();
-        lru->clear(); 
-        total += find_arrangements<lru_size>(s, *lru.get()); 
+        lru.clear(); 
+        total += find_arrangements<lru_size>(s, lru); 
     }
 
     return total; 

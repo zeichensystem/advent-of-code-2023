@@ -8,7 +8,7 @@
     all nodes of the linked list will be stored in the same array instead of potentially all over the heap. 
 */ 
 
-template<typename Key, typename Val, uint32_t N>
+template<typename Key, typename Val, std::size_t N>
 class LRUCache 
 {
 private:
@@ -78,7 +78,9 @@ public:
             ValNodeIdx vn_idx = map.at(key); 
             assert(vn_idx != IDX_NULL);
             ValNode& vn = nodes.at(vn_idx);
-            vn.data = val; 
+            if (vn.data != val) {
+                vn.data = val; 
+            }
 
             if (vn_idx == head_idx) { // Node was already head.
                 assert(vn.prev_idx == IDX_NULL);
@@ -114,7 +116,7 @@ public:
         }
 
         // 2.) The key is not yet inside the cache:
-        uint32_t idx = get_free_idx(); 
+        ValNodeIdx idx = get_free_idx(); 
         if (idx == IDX_NULL) { // a) Cache is full, remove the least recently used element to make space.
             assert(size_ == N);
             assert(tail_idx != IDX_NULL);
@@ -166,10 +168,10 @@ public:
         return map.contains(key);
     }
 
-    Val get_copy(const Key& key) 
+    std::optional<Val> get_copy(const Key& key) 
     {
         if (!map.contains(key)) {
-            throw std::out_of_range("LRUCache::get_copy: key not in cache."); 
+            return {};
         }
         ValNodeIdx vn_idx = map.at(key); 
         assert(vn_idx != IDX_NULL);
@@ -223,59 +225,3 @@ public:
         return os;
     }
 };
-
-// #include<list>
-
-// cf. https://stackoverflow.com/questions/2504178/lru-cache-design/54272232#54272232
-
-// template<typename K, typename V, uint32_t csize = 1024>
-// class LRUCacheList
-// {
-
-// private:
-//     std::list<K>items;
-//     std::unordered_map <K, std::pair<V, typename std::list<K>::iterator>> keyValuesMap;
-
-// public:
-//     LRUCacheList() {
-//     }
-
-//     void insert(const K& key, const V& value) {
-//         auto pos = keyValuesMap.find(key);
-//         if (pos == keyValuesMap.end()) {
-//             items.push_front(key);
-//             keyValuesMap.insert({key, { value, items.begin() }});
-//             if (keyValuesMap.size() > csize) {
-//                 keyValuesMap.erase(items.back());
-//                 items.pop_back();
-//             }
-//         }
-//         else {
-//             items.erase(pos->second.second);
-//             items.push_front(key);
-//             keyValuesMap.insert({key, { value, items.begin() }});
-//         }
-//     }
-
-//     V get_copy(const K& key) {
-//         auto pos = keyValuesMap.find(key);
-//         if (pos == keyValuesMap.end()) {
-//             throw std::out_of_range("LRUCacheList::get_copy: key not in cache."); 
-//         }
-
-//         items.erase(pos->second.second);
-//         items.push_front(key);
-//         keyValuesMap[key] = { pos->second.first, items.begin() };
-//         V value = pos->second.first;
-//         return value;
-//     }
-
-//     void clear() {
-//         keyValuesMap.clear();
-//         items.clear();
-//     }
-
-//     bool contains(const K& key) {
-//         return keyValuesMap.contains(key);
-//     }
-// };
