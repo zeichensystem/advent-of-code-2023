@@ -1,73 +1,14 @@
-#pragma once
-
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <filesystem>
 #include <vector>
 #include <limits>
 #include <cassert>
 #include <optional>
-
-#include "aocio.hpp"
-
-#ifndef AOC_INPUT_PATH
-#define AOC_INPUT_PATH ""
-#endif
-
-#ifndef AOC_INPUT_DIR
-#define AOC_INPUT_DIR ""
-#endif
-
-namespace aocio 
-{
-bool file_getlines(std::string_view fname, std::vector<std::string>& lines);
-void line_tokenise(const std::string& line, const std::string& delims, const std::string& preserved_delims, std::vector<std::string>& tokens);
-
-int parse_num(const std::string &str);
-int64_t parse_num_i64(const std::string& str);
-
-inline void print_day() 
-{
-    std::string day_name {std::filesystem::path(AOC_INPUT_DIR).parent_path().filename()};
-    
-    if (day_name.size()) {
-        day_name[0] = std::toupper(day_name[0]);
-    }
-
-    std::string debug_release;
-    #ifdef NDEBUG
-    debug_release = "Release";
-    #else
-    debug_release = "Debug";
-    #endif
-
-    std::cout << day_name << " (" << debug_release << ")\n";
-}
-}
+#include "vec.hpp"
 
 namespace aocutil
 {
 
-template<typename T>
-struct Vec2 {
-    T x, y; 
-
-    Vec2 operator+(const Vec2& v) const 
-    {
-        return Vec2{.x = x + v.x, .y = y + v.y};
-    }
-
-    Vec2 operator-(const Vec2& v) const 
-    {
-        return Vec2{.x = x - v.x, .y = y - v.y};
-    }
-    
-    bool operator==(const Vec2& v) const = default;
-};
-
 template<typename RowType, typename ElemType>
-class Grid;
+class Grid; // Forward declaration for the iterators. 
 
 // cf. on custom iterators: https://internalpointers.com/post/writing-custom-iterators-modern-cpp (last retrieved 2024-06-19)
 template<typename RowType, typename ElemType, bool is_const>
@@ -79,8 +20,6 @@ struct GridColIterator
     using pointer           = typename std::conditional_t<is_const, const ElemType*, ElemType*>;  
     using reference         = typename std::conditional_t<is_const, const ElemType&, ElemType&>;
     using parent_ptr_type   = typename std::conditional_t<is_const, const Grid<RowType, ElemType>*, Grid<RowType, ElemType>*>;
-
-    // GridColIterator() = default;
 
     GridColIterator(int column, int row, parent_ptr_type parent) : col(column), current_row(row), parent(parent) 
     {
@@ -160,7 +99,7 @@ struct GridColIterator
     {
         int new_row = current_row - n;
         if (new_row < 0 || new_row >= parent->height()) {
-            throw  std::out_of_range("GridIter: subscript out of range");
+            throw  std::out_of_range("GridColIterator: subscript out of range");
         }
         return parent->at(col, new_row);
     }
@@ -187,13 +126,24 @@ struct GridColIterator
         return iter - n; 
     }
 
-    friend bool operator==(const GridColIterator& a, const GridColIterator& b) {assert(a.col == b.col && a.parent == b.parent); return a.current_row == b.current_row; };
-    friend bool operator!=(const GridColIterator& a, const GridColIterator& b) {assert(a.col == b.col && a.parent == b.parent); return a.current_row != b.current_row;};  
+    friend bool operator==(const GridColIterator& a, const GridColIterator& b) 
+    {
+        assert(a.col == b.col && a.parent == b.parent); 
+        bool eq = a.current_row == b.current_row; 
+        assert(!(eq && (a.ptr != b.ptr)));
+        return eq;
+    };
+
+    friend bool operator!=(const GridColIterator& a, const GridColIterator& b) 
+    {
+        assert(a.col == b.col && a.parent == b.parent);
+        return a.current_row != b.current_row;
+    };  
 
 private:
     int col; 
     int current_row;
-    parent_ptr_type parent = nullptr; // ptr itself is const (and parent_ptr_type depending on is_const).
+    parent_ptr_type parent = nullptr;
     pointer ptr; 
 };
 
@@ -207,8 +157,6 @@ struct GridIterator
     using pointer           = typename std::conditional_t<is_const, const ElemType*, ElemType*>;  
     using reference         = typename std::conditional_t<is_const, const ElemType&, ElemType&>;
     using parent_ptr_type   = typename std::conditional_t<is_const, const Grid<RowType, ElemType>*, Grid<RowType, ElemType>*>;
-
-    // GridIterator() = default;
 
     GridIterator(int column, int row, parent_ptr_type parent) : current_col(column), current_row(row), parent(parent) 
     {
@@ -332,7 +280,7 @@ struct GridIterator
         int new_col = new_idx % parent->width();
         int new_row = new_idx / parent->width();
         if (!parent->pos_on_grid(new_col, new_row)) {
-            throw std::out_of_range("Grid: subscript out of range.");
+            throw std::out_of_range("GridIterator: subscript out of range.");
         }
         return parent->at(new_col, new_row);
     }
@@ -363,8 +311,18 @@ struct GridIterator
         return iter - n;
     }
 
-    friend bool operator==(const GridIterator& a, const GridIterator& b) {assert(a.parent == b.parent); return a.ptr == b.ptr;};
-    friend bool operator!=(const GridIterator& a, const GridIterator& b) {assert(a.parent == b.parent); return a.ptr != b.ptr;};  
+    friend bool operator==(const GridIterator& a, const GridIterator& b) 
+    {
+        assert(a.parent == b.parent); 
+        return a.ptr == b.ptr && (a.current_col == b.current_col && a.current_row == b.current_row); 
+    };
+
+    friend bool operator!=(const GridIterator& a, const GridIterator& b) 
+    {
+        assert(a.parent == b.parent); 
+        assert(!((a.ptr != b.ptr) && (a.current_col == b.current_col && a.current_row == b.current_row)));
+        return a.ptr != b.ptr;
+    };  
 
 private:
     int current_col = 0; 
@@ -568,14 +526,3 @@ public:
 };
 
 }
-
-template<typename T>
-struct std::hash<aocutil::Vec2<T>>
-{
-    std::size_t operator()(const aocutil::Vec2<T>& v) const noexcept
-    {
-        std::size_t h1 = std::hash<T>{}(v.x); 
-        std::size_t h2 = std::hash<T>{}(v.y); 
-        return h1 ^ (h2 << 1); // cf. https://en.cppreference.com/w/cpp/utility/hash (last retrieved 2024-06-17)
-    }
-};

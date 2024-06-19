@@ -1,5 +1,5 @@
-#include "../aocio/aocio.hpp"
-#include "../lru-cache/lru-cache.hpp"
+#include "../aoclib/aocio.hpp"
+#include "../aoclib/lru-cache.hpp"
 
 /*
     Problem: https://adventofcode.com/2023/day/12
@@ -12,6 +12,8 @@
         - Implemented a simple LRU-cache. It's not really useful, using an unordered_map is just as fast here. 
           But it should use less memory for smaller lru sizes, which is cool. 
 */
+
+using aocutil::LRUCache; 
 
 struct SpringRecord {
     std::string condition; 
@@ -59,7 +61,7 @@ void parse_spring_records(const std::vector<std::string>& lines, std::vector<Spr
         std::vector<std::string> str_nums; 
         aocio::line_tokenise(toks.at(1), ",", "", str_nums);
         for (const auto& str : str_nums) {
-            sr.damaged_groups.push_back(aocio::parse_num(str)); 
+            sr.damaged_groups.push_back(aocio::parse_num(str).value()); 
         }
 
         result.push_back(sr); 

@@ -1,16 +1,16 @@
 #include <unordered_set>
-#include <numeric>
 #include <stack>
-#include "../aocio/aocio.hpp"
+#include "../aoclib/aocio.hpp"
+#include "../aoclib/grid.hpp"
 
 /*
     Problem: https://adventofcode.com/2023/day/16
   
     Solutions: 
         - Part 1: 6605
-        - Part 2: 
+        - Part 2: 6766
     Notes:  
-
+        - Implemented a templated grid class with custom random_access_iterators as an exercise. That was fun!
 */
 
 using namespace aocutil; 
@@ -31,11 +31,6 @@ struct std::hash<Beam> {
     }
 };
 
-constexpr Vec2<int> dir_right = {.x = 1, .y = 0};
-constexpr Vec2<int> dir_left = {.x = -1, .y = 0};
-constexpr Vec2<int> dir_up = {.x = 0, .y = -1};
-constexpr Vec2<int> dir_down = {.x = 0, .y = 1};
-
 using BeamSet = std::unordered_set<Beam>; 
 
 const std::ostream& operator<<(std::ostream& os, const BeamSet& bs)
@@ -46,6 +41,11 @@ const std::ostream& operator<<(std::ostream& os, const BeamSet& bs)
         return os << ".";
     }
 }
+
+constexpr Vec2<int> dir_right = {.x = 1, .y = 0};
+constexpr Vec2<int> dir_left = {.x = -1, .y = 0};
+constexpr Vec2<int> dir_up = {.x = 0, .y = -1};
+constexpr Vec2<int> dir_down = {.x = 0, .y = 1};
 
 void parse_grid(const std::vector<std::string>& lines, CharGrid& grid)
 {
@@ -59,20 +59,19 @@ void parse_grid(const std::vector<std::string>& lines, CharGrid& grid)
 int calculate_energized(const CharGrid& grid, Beam start_beam)
 {
     Grid<std::vector<BeamSet>, BeamSet> energised_grid; 
-
     for (int y = 0; y < grid.height(); ++y) {
         std::vector<BeamSet> row(grid.width(), BeamSet()); 
         energised_grid.push_row(row);
     }
 
-    std::stack<Beam> beams; // We follow the beam depth-first with a stack (breadth-first with a queue).
+    std::stack<Beam> beams; // We follow the beam depth-first since we use a stack here (breadth-first if we used a queue).
     beams.push(start_beam);
 
     while (beams.size()) {
         Beam b = beams.top();
         beams.pop();
-
         auto sym = grid.try_get(b.pos); 
+        
         if (!sym) { // The beam left the grid. 
             continue; 
         }
@@ -140,7 +139,7 @@ int calculate_energized(const CharGrid& grid, Beam start_beam)
         }
     }
     // std::cout << energised_grid << "\n";
-    return std::count_if(energised_grid.begin(), energised_grid.end(), [](const BeamSet& bs) {return bs.size() > 0;});
+    return std::count_if(energised_grid.cbegin(), energised_grid.cend(), [](const BeamSet& bs) {return bs.size() > 0;});
 }
 
 int part_one(const std::vector<std::string>& lines)
@@ -152,7 +151,28 @@ int part_one(const std::vector<std::string>& lines)
 
 int part_two(const std::vector<std::string>& lines)
 {
-    return -1;
+    CharGrid grid;
+    parse_grid(lines, grid);
+
+    std::vector<Beam> start_beams; 
+    for (int x = 0; x < grid.width(); ++x) { // Top and bottom edge. 
+        Beam b_top = {.pos = Vec2<int>{x, 0}, .dir = dir_down};
+        Beam b_bottom = {.pos = Vec2<int>{x, grid.height() - 1}, .dir = dir_up};
+        start_beams.push_back(b_top); 
+        start_beams.push_back(b_bottom);
+    }
+    for (int y = 0; y < grid.height(); ++y) { // Left and right edge.
+        Beam b_left = {.pos = Vec2<int>{0, y}, .dir = dir_right};
+        Beam b_right = {.pos = Vec2<int>{grid.width() - 1, y}, .dir = dir_left};
+        start_beams.push_back(b_left); 
+        start_beams.push_back(b_right);
+    }
+
+    int max_energised = 0; 
+    for (const Beam& beam : start_beams) {
+        max_energised = std::max(calculate_energized(grid, beam), max_energised);
+    }
+    return max_energised; 
 }
 
 int main()
@@ -170,8 +190,8 @@ int main()
         std::cout << "Part 1: " << p1 << "\n";
         int p2 = part_two(lines);
         std::cout << "Part 2: " << p2 << "\n";
-    } catch (const char* err) {
-        std::cerr << "Error: " << err << "\n";
+    } catch (const std::exception& err) {
+        std::cerr << "Error: " << err.what() << "\n";
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;

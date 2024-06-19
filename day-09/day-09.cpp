@@ -1,7 +1,7 @@
 #include <string>
 #include <unordered_map>
 #include <numeric>
-#include "../aocio/aocio.hpp"
+#include "../aoclib/aocio.hpp"
 
 /*
     Problem: https://adventofcode.com/2023/day/9
@@ -21,7 +21,7 @@ void parse_histories(const std::vector<std::string>& lines, std::vector<std::vec
         aocio::line_tokenise(line, " \t", "", toks); 
         std::vector<int> history; 
         for (const auto &tok : toks) {
-            history.push_back(aocio::parse_num(tok));
+            history.push_back(aocio::parse_num(tok).value());
        }
        result.push_back(history); 
     }

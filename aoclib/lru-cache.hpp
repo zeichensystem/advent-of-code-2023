@@ -2,6 +2,8 @@
 #include <array>
 #include <unordered_map>
 
+namespace aocutil 
+{
 /*
     General idea: https://stackoverflow.com/questions/2504178/lru-cache-design/54272232#54272232 (last retrieved 2024-06-16)
     Instead of using std::list, a custom intrusive doubly linked list is used, which means
@@ -205,7 +207,7 @@ public:
     {
         os << "size: " << cache.size <<"\n"; 
         size_t idx = cache.head_idx; 
-        size_t prev_idx = LRUCache::IDX_NULL; 
+        [[maybe_unused]] size_t prev_idx = LRUCache::IDX_NULL; 
         while (idx != LRUCache<Key, Val, N>::IDX_NULL ) {
             const auto& v = cache.nodes.at(idx); 
 
@@ -225,3 +227,5 @@ public:
         return os;
     }
 };
+
+}

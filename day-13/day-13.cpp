@@ -1,6 +1,6 @@
 #include <unordered_map>
 #include <unordered_set>
-#include "../aocio/aocio.hpp"
+#include "../aoclib/aocio.hpp"
 
 /*
     Problem: https://adventofcode.com/2023/day/13

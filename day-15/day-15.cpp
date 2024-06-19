@@ -1,6 +1,6 @@
 #include <array>
 #include <numeric>
-#include "../aocio/aocio.hpp"
+#include "../aoclib/aocio.hpp"
 
 /*
     Problem: https://adventofcode.com/2023/day/15
@@ -127,7 +127,7 @@ int part_two(const std::vector<std::string>& lines)
             box.remove_lens(lens_lbl); 
         } else if (cmd == '=') {
             const std::string focal_len_str = std::string{word.substr(cmd_idx + 1, word.size())}; 
-            int focal_len = aocio::parse_num(focal_len_str); 
+            int focal_len = aocio::parse_num(focal_len_str).value(); 
             box.insert_or_update_lens(lens_lbl, focal_len);
         } else {
             throw "Invalid command";

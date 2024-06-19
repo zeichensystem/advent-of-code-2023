@@ -1,10 +1,3 @@
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <vector>
-#include <cassert>
-#include <string>
-
 #include "aocio.hpp"
 
 bool aocio::file_getlines(std::string_view fname, std::vector<std::string>& lines)
@@ -27,7 +20,7 @@ void aocio::line_tokenise(const std::string& line, const std::string& delims, co
 {
     for (char d : preserved_delims) {
         if (delims.find(d) == std::string::npos) {
-            throw "Preserved delim not in delims";
+            throw std::invalid_argument("Preserved delim not in delims");
         }
     }
     std::string::size_type start_pos = 0;
@@ -50,22 +43,22 @@ void aocio::line_tokenise(const std::string& line, const std::string& delims, co
     }
 }
 
-int aocio::parse_num(const std::string &str)
+std::optional<int> aocio::parse_num(const std::string &str)
 {
     size_t num_read = 0; 
     int n = std::stoi(str, &num_read); 
     if (num_read == 0) {
-        throw "Invalid token: expected number";
+        return {};
     }
     return n; 
 } 
 
-int64_t aocio::parse_num_i64(const std::string& str)
+std::optional<int64_t> aocio::parse_num_i64(const std::string& str)
 {
     size_t num_read = 0; 
     int64_t n = std::stoll(str, &num_read); 
     if (num_read == 0) {
-        throw "Invalid token: expected number";
+        return {};
     }
     return n; 
 } 

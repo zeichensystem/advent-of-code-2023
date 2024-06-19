@@ -4,7 +4,7 @@
 #include <numeric>
 #include <array>
 #include <queue>
-#include "../aocio/aocio.hpp"
+#include "../aoclib/aocio.hpp"
 
 /*
     Problem: https://adventofcode.com/2023/day/10
@@ -122,8 +122,8 @@ GridPos vertname_to_gridpos(const std::string& vert)
     auto sep_idx = vert.find(",");
     assert(sep_idx != std::string::npos); 
     assert(sep_idx < vert.size() - 1); 
-    int x =  aocio::parse_num(vert.substr(0, sep_idx)); 
-    int y = aocio::parse_num(vert.substr(sep_idx + 1, vert.size())); 
+    int x = aocio::parse_num(vert.substr(0, sep_idx)).value(); 
+    int y = aocio::parse_num(vert.substr(sep_idx + 1, vert.size())).value(); 
     return GridPos {x, y}; 
 }
 

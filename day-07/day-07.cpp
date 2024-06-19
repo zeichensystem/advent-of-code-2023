@@ -1,7 +1,7 @@
 #include <string>
 #include <numeric>
 #include <array>
-#include "../aocio/aocio.hpp"
+#include "../aoclib/aocio.hpp"
 
 /*
     Problem: https://adventofcode.com/2023/day/7
@@ -185,7 +185,7 @@ void parse_hands(std::vector<Hand> &result, const std::vector<std::string>& line
         std::vector<std::string> toks; 
         aocio::line_tokenise(line, " \t", "", toks); 
         assert(toks.size() == 2); 
-        int bid = aocio::parse_num(toks.at(1)); 
+        int bid = aocio::parse_num(toks.at(1)).value(); 
         result.emplace_back(Hand(toks.at(0), bid, use_jokers));
     }
 }

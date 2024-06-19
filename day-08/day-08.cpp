@@ -1,8 +1,7 @@
 #include <string>
 #include <unordered_map>
 #include <numeric>
-
-#include "../aocio/aocio.hpp"
+#include "../aoclib/aocio.hpp"
 
 /*
     Problem: https://adventofcode.com/2023/day/8
