@@ -6,12 +6,11 @@
 
 namespace aocutil
 {
-
-template<typename RowType, typename ElemType>
-class Grid; // Forward declaration for the iterators. 
+template<typename ElemType>
+class Grid; // Forward declaration.
 
 // cf. on custom iterators: https://internalpointers.com/post/writing-custom-iterators-modern-cpp (last retrieved 2024-06-19)
-template<typename RowType, typename ElemType, bool is_const>
+template<typename ElemType, bool is_const>
 struct GridColIterator 
 {
     using iterator_category = std::random_access_iterator_tag;
@@ -19,7 +18,7 @@ struct GridColIterator
     using value_type        = ElemType;
     using pointer           = typename std::conditional_t<is_const, const ElemType*, ElemType*>;  
     using reference         = typename std::conditional_t<is_const, const ElemType&, ElemType&>;
-    using parent_ptr_type   = typename std::conditional_t<is_const, const Grid<RowType, ElemType>*, Grid<RowType, ElemType>*>;
+    using parent_ptr_type   = typename std::conditional_t<is_const, const Grid<ElemType>*, Grid<ElemType>*>;
 
     GridColIterator(int column, int row, parent_ptr_type parent) : col(column), current_row(row), parent(parent) 
     {
@@ -27,7 +26,7 @@ struct GridColIterator
         if (parent == nullptr || !parent->pos_on_grid(col, row)) {
             ptr = nullptr;
         } else {
-            ptr = &parent->rows.at(row).at(col);
+            ptr = &parent->at(col, row);
         }
     };
 
@@ -40,7 +39,7 @@ struct GridColIterator
         assert(parent);
          if (current_row < parent->height() - 1 && current_row >= -1)  {
             ++current_row;
-            ptr = &parent->rows.at(current_row).at(col);
+            ptr = &parent->at(col, current_row);
          } else {
             ++current_row;
             ptr = nullptr;
@@ -53,7 +52,7 @@ struct GridColIterator
         assert(parent);
          if (current_row > 0 && current_row <= parent->height())  {
             --current_row;
-            ptr = &parent->rows.at(current_row).at(col);
+            ptr = &parent->at(col, current_row);
          } else {
             --current_row;
             ptr = nullptr;
@@ -99,7 +98,7 @@ struct GridColIterator
     {
         int new_row = current_row - n;
         if (new_row < 0 || new_row >= parent->height()) {
-            throw  std::out_of_range("GridColIterator: subscript out of range");
+            throw std::out_of_range("GridColIterator: subscript out of range");
         }
         return parent->at(col, new_row);
     }
@@ -121,6 +120,7 @@ struct GridColIterator
     {
         return iter + n;
     }
+
     friend GridColIterator operator-(const difference_type& n, const GridColIterator& iter)
     {
         return iter - n; 
@@ -148,47 +148,47 @@ private:
 };
 
 
-template<typename RowType, typename ElemType, bool is_const>
+template<typename ElemType, bool is_const>
 struct GridIterator 
 {
+private: 
+    bool idx_on_grid(int idx) const {
+        return idx >= 0 && idx < std::ssize(parent->data);
+    }
+
+public:
     using iterator_category = std::random_access_iterator_tag;
     using difference_type   = int;
     using value_type        = ElemType;
     using pointer           = typename std::conditional_t<is_const, const ElemType*, ElemType*>;  
     using reference         = typename std::conditional_t<is_const, const ElemType&, ElemType&>;
-    using parent_ptr_type   = typename std::conditional_t<is_const, const Grid<RowType, ElemType>*, Grid<RowType, ElemType>*>;
+    using parent_ptr_type   = typename std::conditional_t<is_const, const Grid<ElemType>*, Grid<ElemType>*>;
 
-    GridIterator(int column, int row, parent_ptr_type parent) : current_col(column), current_row(row), parent(parent) 
+    GridIterator(int column, int row, parent_ptr_type parent) :  parent(parent) 
     {
         assert(parent);
-        if (parent == nullptr || !parent->pos_on_grid(current_col, current_row)) {
+        current_idx = column + row * parent->width();
+        if (parent == nullptr || !idx_on_grid(current_idx)) {
             ptr = nullptr;
+            // current_idx = current_idx < 0 ? -1 : std::ssize(parent->data);
         } else {
-            ptr = &parent->rows.at(current_row).at(current_col);
+            ptr = &parent->data.at(current_idx);
         }
     };
 
-    reference operator*() const {assert(ptr != nullptr); return *ptr; }
+    reference operator*() const {if (!ptr) {std::cout << current_idx << "\n";} assert(ptr != nullptr); return *ptr; }
     pointer operator->() const {assert(ptr != nullptr); return ptr; }
 
     // Prefix:
     GridIterator& operator++() 
     {
         assert(parent);
-        difference_type new_idx = 0; 
-        if (current_col == -1 && current_row == -1) {
-            new_idx = 0;
-        } else {
-            new_idx = current_col + current_row * parent->width() + 1;
-        }
-        current_col = new_idx % parent->width();
-        current_row = new_idx / parent->width();
+        ++current_idx;
 
-        if (parent->pos_on_grid(current_col, current_row)) {
-            ptr = &parent->rows.at(current_row).at(current_col);
+        if (idx_on_grid(current_idx)) {
+            ptr = &parent->data.at(current_idx);
         } else {
-            current_col = new_idx >= 0 ? parent->width() : -1;
-            current_row = new_idx >= 0 ? parent->height() : -1;
+            // current_idx = current_idx < 0 ? -1 : std::ssize(parent->data);
             ptr = nullptr;
         }
          return *this;
@@ -197,21 +197,13 @@ struct GridIterator
     GridIterator& operator--() 
     {
         assert(parent);
-        difference_type new_idx = 0; 
-        if (current_col == parent->width() && current_row == parent->height()) {
-            new_idx = parent->width() * parent->height() - 1; 
+        --current_idx;
+
+        if (idx_on_grid(current_idx)) {
+            ptr = &parent->data.at(current_idx);
         } else {
-            new_idx = current_col + current_row * parent->width() - 1;
-        }
-        current_col = new_idx % parent->width();
-        current_row = new_idx / parent->width();
-        
-        if (parent->pos_on_grid(current_col, current_row)) {
-            ptr = &parent->rows.at(current_row).at(current_col);
-        } else {
+            // current_idx = current_idx < 0 ? -1 : std::ssize(parent->data);
             ptr = nullptr;
-            current_col = new_idx >= 0 ? parent->width() : -1;
-            current_row = new_idx >= 0 ? parent->height() : -1;
         }
          return *this;
     }  
@@ -223,20 +215,12 @@ struct GridIterator
     GridIterator& operator+=(const difference_type& n) 
     {
         assert(parent);
-        difference_type new_idx = 0; 
-        if (current_col == -1 && current_row == -1) {
-            new_idx = n - 1;
-        } else {
-            new_idx = current_col + current_row * parent->width() + n;
-        }
-        current_col = new_idx % parent->width();
-        current_row = new_idx / parent->width();
+        current_idx += n;
 
-        if (parent->pos_on_grid(current_col, current_row)) {
-            ptr = &parent->rows.at(current_row).at(current_col);
+        if (idx_on_grid(current_idx)) {
+            ptr = &parent->data.at(current_idx);
         } else {
-            current_col = new_idx >= 0 ? parent->width() : -1;
-            current_row = new_idx >= 0 ? parent->height() : -1;
+            // current_idx = current_idx < 0 ? -1 : std::ssize(parent->data);
             ptr = nullptr;
         }
         return *this;
@@ -249,22 +233,16 @@ struct GridIterator
     GridIterator operator+(const difference_type& n) const
     {
         assert(parent);
+        int current_col = current_idx % parent->width();
+        int current_row = current_idx / parent->width();
         GridIterator res = GridIterator(current_col, current_row, parent);
-        difference_type new_idx = 0; 
-        if (current_col == -1 && current_row == -1) {
-            new_idx = 0;
-        } else {
-            new_idx = current_col + current_row * parent->width() + n;
-        }
-        res.current_col = new_idx % parent->width();
-        res.current_row = new_idx / parent->width();
+        res.current_idx = current_idx + n;;
     
-        if (parent->pos_on_grid(res.current_col, res.current_row)) {
-            res.ptr = &parent->rows.at(res.current_row).at(res.current_col);
+        if (idx_on_grid(res.current_idx)) {
+            res.ptr = &parent->data.at(res.current_idx);
         } else {
+            // res.current_idx = res.current_idx < 0 ? -1 : std::ssize(parent->data);
             res.ptr = nullptr;
-            res.current_col = new_idx >= 0 ? parent->width() : -1;
-            res.current_row = new_idx >= 0 ? parent->height() : -1;
         }
  
         return res;
@@ -276,29 +254,23 @@ struct GridIterator
 
     ElemType& operator[](difference_type n) const
     {
-        difference_type new_idx = current_col + current_row * parent->width() + n;
-        int new_col = new_idx % parent->width();
-        int new_row = new_idx / parent->width();
-        if (!parent->pos_on_grid(new_col, new_row)) {
+        difference_type new_idx = current_idx + n;
+        if (!idx_on_grid(new_idx)) {
             throw std::out_of_range("GridIterator: subscript out of range.");
         }
-        return parent->at(new_col, new_row);
+        return parent->data.at(new_idx);
     }
 
     difference_type operator-(const GridIterator& other) const 
     {
-        assert(parent == other.parent);
-        difference_type this_idx = current_col + current_row * parent->width(); 
-        difference_type other_idx = other.current_col + other.current_row * parent->width(); 
-        return this_idx - other_idx; 
+        assert(parent == other.parent); 
+        return current_idx - other.current_idx; 
     }
 
     auto operator<=>(const GridIterator& rhs) const
     {
-        assert(rhs.parent == parent);
-        difference_type this_idx = current_col + current_row * parent->width(); 
-        difference_type other_idx = rhs.current_col + rhs.current_row * parent->width(); 
-        return this_idx - other_idx;
+        assert(rhs.parent == parent); 
+        return current_idx - rhs.current_idx; 
     }
 
     friend GridIterator operator+(const difference_type& n, const GridIterator& iter) 
@@ -314,39 +286,47 @@ struct GridIterator
     friend bool operator==(const GridIterator& a, const GridIterator& b) 
     {
         assert(a.parent == b.parent); 
-        return a.ptr == b.ptr && (a.current_col == b.current_col && a.current_row == b.current_row); 
+        bool eq = a.current_idx == b.current_idx; 
+        assert(!(eq && a.ptr != b.ptr));
+        return eq;
     };
 
     friend bool operator!=(const GridIterator& a, const GridIterator& b) 
     {
         assert(a.parent == b.parent); 
-        assert(!((a.ptr != b.ptr) && (a.current_col == b.current_col && a.current_row == b.current_row)));
-        return a.ptr != b.ptr;
+        bool neq = a.current_idx != b.current_idx;
+        assert(!((a.ptr != nullptr) && neq && (a.ptr == b.ptr)));
+        return neq;
     };  
 
 private:
-    int current_col = 0; 
-    int current_row = 0;
+    int current_idx = 0;
     parent_ptr_type parent = nullptr;
     pointer ptr = nullptr; 
 };
 
 
-template<typename RowType, typename ElemType>
+template<typename ElemType>
 class Grid 
 {
-    std::vector<RowType> rows;
+    std::vector<ElemType> data;
     int width_ = 0, height_ = 0; 
 
-    using GridColIteratorMut = GridColIterator<RowType, ElemType, false>;
-    using GridColIteratorConst = GridColIterator<RowType, ElemType, true>;
-    using GridIteratorMut = GridIterator<RowType, ElemType, false>; 
-    using GridIteratorConst = GridIterator<RowType, ElemType, true>;
+    using GridColIteratorMut = GridColIterator<ElemType, false>;
+    using GridColIteratorConst = GridColIterator<ElemType, true>;
+    using GridIteratorMut = GridIterator<ElemType, false>; 
+    using GridIteratorConst = GridIterator<ElemType, true>;
 
     friend GridColIteratorMut;
     friend GridColIteratorConst;
     friend GridIteratorMut;
     friend GridIteratorConst;
+
+    using RowType = std::conditional_t<std::is_same<ElemType, char>::value, std::string, std::vector<ElemType>>;
+
+    int calc_idx(int x, int y) const {
+        return x + y * width();
+    }
 
 public: 
     Grid() = default; 
@@ -360,6 +340,9 @@ public:
         height_ = rows.size();
         for (const auto& row : rows) {
             assert(std::ssize(row) == width_); 
+            for (const auto & elem : row) {
+                data.push_back(elem);
+            }
         }
     }
 
@@ -370,7 +353,9 @@ public:
         } else {
             width_ = std::ssize(row);
         }
-        rows.push_back(row);
+        for (const auto& elem : row) {
+            data.push_back(elem);
+        }
         ++height_;
         if (width_ == 0 || height_ == 0) {
             throw std::runtime_error("Grid: Tried to push empty row.");
@@ -382,7 +367,7 @@ public:
         if (!pos_on_grid(x, y)) {
             return {};
         }
-        return rows.at(y).at(x);
+        return data.at(calc_idx(x, y));
     }
     std::optional<ElemType> try_get(const Vec2<int>& pos) const {
         return try_get(pos.x, pos.y); 
@@ -393,7 +378,7 @@ public:
         if (!pos_on_grid(x, y)) {
             throw std::out_of_range("Grid get: invalid position");
         }
-        return rows.at(y).at(x);
+        return data.at(calc_idx(x, y));
     }
     ElemType get(const Vec2<int>& pos) const {
         return get(pos.x, pos.y);
@@ -404,7 +389,7 @@ public:
         if (!pos_on_grid(x, y)) {
             throw std::out_of_range("Grid set: invalid position");
         }
-        rows.at(y).at(x) = e;
+        data.at(calc_idx(x, y)) = e;
     }
     void set(const Vec2<int>& pos, ElemType e) {
         set(pos.x, pos.y, e);
@@ -427,7 +412,7 @@ public:
         if (!pos_on_grid(x, y)) {
             throw std::out_of_range("Grid at: invalid position");
         }
-        return rows.at(y).at(x);
+        return data.at(calc_idx(x, y));
     }
     ElemType& at(const Vec2<int>& pos) {
         return at(pos.x, pos.y);
@@ -438,23 +423,16 @@ public:
         if (!pos_on_grid(x, y)) {
             throw std::out_of_range("Grid at: invalid position");
         }
-        return rows.at(y).at(x);
+        return data.at(calc_idx(x, y));
     }
     const ElemType& at(const Vec2<int>& pos) const {
         return at(pos.x, pos.y);
     }
 
-    RowType& operator[](int row) 
-    {
-        if (row < 0 || row >= height_) {
-            throw std::out_of_range("Grid: invalid row");
-        } else {
-            return rows.at(row);
-        }
-    }
-
     bool pos_on_grid(int x, int y) const {
-        return x >= 0 && x < width_ && y >= 0 && y < height_; 
+        bool on_grid = x >= 0 && x < width_ && y >= 0 && y < height_; 
+        assert(!(on_grid && (calc_idx(x, y) >= std::ssize(data) || calc_idx(x, y) < 0)));
+        return on_grid;
     }
     bool pos_on_grid(const Vec2<int>& pos) const {
         return pos_on_grid(pos.x, pos.y);
@@ -471,15 +449,16 @@ public:
         return GridIteratorMut(0, 0, this);
     }
     GridIteratorMut end() {
-        return GridIteratorMut(width(), height(), this);
+        return GridIteratorMut(width(), height() - 1, this);
     }
 
     GridIteratorConst cbegin() {
         return GridIteratorConst(0, 0, this);
     }
     GridIteratorConst cend() {
-        return GridIteratorConst(width(), height(), this);
+        return GridIteratorConst(width(), height() - 1, this);
     }
+
 
     GridColIteratorMut begin_col(int col) {
         return GridColIteratorMut(col, 0, this);
@@ -497,23 +476,24 @@ public:
         return GridColIteratorConst(col, height_, this);
     }
 
-    typename RowType::iterator begin_row(int row) {
-        return rows.at(row).begin();
+
+    GridIteratorMut begin_row(int row) {
+        return GridIteratorMut(0, row, this);
     }
 
-    typename RowType::iterator end_row(int row) {
-        return rows.at(row).end();
+    GridIteratorMut end_row(int row) {
+        return GridIteratorMut(0, row + 1, this);
     }
 
-    typename RowType::const_iterator cbegin_row(int row) const {
-        return rows.at(row).cbegin();
+    GridIteratorConst cbegin_row(int row) const {
+        return GridIteratorConst(0, row, this);
     }
 
-    typename RowType::const_iterator cend_row(int row) const {
-        return rows.at(row).cend();
+    GridIteratorConst cend_row(int row) const {
+        return GridIteratorConst(0, row + 1, this);
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Grid<RowType, ElemType>& g) 
+    friend std::ostream& operator<<(std::ostream& os, const Grid<ElemType>& g) 
     {
         for (int row_n = 0; row_n < g.height(); ++row_n) {
             for (auto elem = g.cbegin_row(row_n); elem != g.cend_row(row_n); ++elem) {
@@ -524,5 +504,4 @@ public:
         return os;
     }
 };
-
 }

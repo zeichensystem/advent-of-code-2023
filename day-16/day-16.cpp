@@ -14,7 +14,6 @@
 */
 
 using namespace aocutil; 
-using CharGrid = Grid<std::string, char>;
 
 struct Beam {
     Vec2<int> pos, dir;
@@ -47,7 +46,7 @@ constexpr Vec2<int> dir_left = {.x = -1, .y = 0};
 constexpr Vec2<int> dir_up = {.x = 0, .y = -1};
 constexpr Vec2<int> dir_down = {.x = 0, .y = 1};
 
-void parse_grid(const std::vector<std::string>& lines, CharGrid& grid)
+void parse_grid(const std::vector<std::string>& lines, Grid<char>& grid)
 {
     for (const auto& line: lines) {
         if (line.size()) {
@@ -56,9 +55,9 @@ void parse_grid(const std::vector<std::string>& lines, CharGrid& grid)
     }
 }
 
-int calculate_energized(const CharGrid& grid, Beam start_beam)
+int calculate_energized(const Grid<char>& grid, Beam start_beam)
 {
-    Grid<std::vector<BeamSet>, BeamSet> energised_grid; 
+    Grid<BeamSet> energised_grid; 
     for (int y = 0; y < grid.height(); ++y) {
         std::vector<BeamSet> row(grid.width(), BeamSet()); 
         energised_grid.push_row(row);
@@ -144,14 +143,14 @@ int calculate_energized(const CharGrid& grid, Beam start_beam)
 
 int part_one(const std::vector<std::string>& lines)
 {
-    CharGrid grid; 
+    Grid<char> grid; 
     parse_grid(lines, grid);
     return calculate_energized(grid, Beam{.pos={0, 0}, .dir = dir_right});
 }
 
 int part_two(const std::vector<std::string>& lines)
 {
-    CharGrid grid;
+    Grid<char> grid;
     parse_grid(lines, grid);
 
     std::vector<Beam> start_beams; 
@@ -168,11 +167,11 @@ int part_two(const std::vector<std::string>& lines)
         start_beams.push_back(b_right);
     }
 
-    int max_energised = 0; 
+    int max_energized = 0; 
     for (const Beam& beam : start_beams) {
-        max_energised = std::max(calculate_energized(grid, beam), max_energised);
+        max_energized = std::max(calculate_energized(grid, beam), max_energized);
     }
-    return max_energised; 
+    return max_energized; 
 }
 
 int main()
