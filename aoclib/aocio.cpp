@@ -62,3 +62,13 @@ std::optional<int64_t> aocio::parse_num_i64(const std::string& str)
     }
     return n; 
 } 
+
+std::optional<int> aocio::parse_digit(char c)
+{
+    int digit = static_cast<int>(c) - '0'; 
+    if (digit >= 0 && digit <= 9) {
+        return digit; 
+    } else {
+        return {};
+    }
+}

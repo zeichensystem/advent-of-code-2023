@@ -1,4 +1,7 @@
+#pragma once
+
 #include <memory>
+#include "hash.hpp"
 
 namespace aocutil 
 {
@@ -27,8 +30,13 @@ struct std::hash<aocutil::Vec2<T>>
 {
     std::size_t operator()(const aocutil::Vec2<T>& v) const noexcept
     {
-        std::size_t h1 = std::hash<T>{}(v.x); 
-        std::size_t h2 = std::hash<T>{}(v.y); 
-        return h1 ^ (h2 << 1); // cf. https://en.cppreference.com/w/cpp/utility/hash (last retrieved 2024-06-17)
+        std::size_t h = 0;
+        aocutil::hash_combine(h, v.x, v.y);
+        return h; 
     }
 };
+
+template<typename T>
+std::ostream& operator<<(std::ostream&os, const aocutil::Vec2<T>& v) {
+    return os << "(x: " << v.x << ", y: " << v.y << ")";
+}

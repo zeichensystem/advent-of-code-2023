@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <limits>
 #include <cassert>
@@ -6,6 +8,7 @@
 
 namespace aocutil
 {
+
 template<typename ElemType>
 class Grid; // Forward declaration.
 
@@ -429,6 +432,17 @@ public:
         return at(pos.x, pos.y);
     }
 
+    ElemType& operator[](const Vec2<int>& pos) 
+    {
+        assert(calc_idx(pos.x, pos.y) >= 0 && calc_idx(pos.x, pos.y) < std::ssize(data));
+        return data[calc_idx(pos.x, pos.y)]; 
+    }
+    const ElemType& operator[](const Vec2<int>& pos) const 
+    {
+        assert(calc_idx(pos.x, pos.y) >= 0 && calc_idx(pos.x, pos.y) < std::ssize(data));
+        return data[calc_idx(pos.x, pos.y)]; 
+    }
+
     bool pos_on_grid(int x, int y) const {
         bool on_grid = x >= 0 && x < width_ && y >= 0 && y < height_; 
         assert(!(on_grid && (calc_idx(x, y) >= std::ssize(data) || calc_idx(x, y) < 0)));
@@ -504,4 +518,5 @@ public:
         return os;
     }
 };
+
 }

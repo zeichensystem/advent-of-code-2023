@@ -24,6 +24,7 @@ void line_tokenise(const std::string& line, const std::string& delims, const std
 
 std::optional<int> parse_num(const std::string &str);
 std::optional<int64_t> parse_num_i64(const std::string& str);
+std::optional<int> parse_digit(char c);
 
 inline void print_day() 
 {
