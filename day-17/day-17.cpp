@@ -1,5 +1,4 @@
 #include <unordered_set>
-#include <stack>
 #include "../aoclib/aocio.hpp"
 #include "../aoclib/grid.hpp"
 #include "../aoclib/prio-queue.hpp"

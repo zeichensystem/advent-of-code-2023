@@ -7,7 +7,8 @@ namespace aocutil
 {
 
 template<typename T>
-struct Vec2 {
+struct Vec2 
+{
     T x, y; 
 
     Vec2 operator+(const Vec2& v) const 
@@ -37,6 +38,6 @@ struct std::hash<aocutil::Vec2<T>>
 };
 
 template<typename T>
-std::ostream& operator<<(std::ostream&os, const aocutil::Vec2<T>& v) {
+inline std::ostream& operator<<(std::ostream&os, const aocutil::Vec2<T>& v) {
     return os << "(x: " << v.x << ", y: " << v.y << ")";
 }
