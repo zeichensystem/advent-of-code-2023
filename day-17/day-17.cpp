@@ -17,16 +17,15 @@
           When using hash_combine, part 1 runs in ~0.5 seconds instead of ~6 seconds.
         - Part 2: Harder than expected; off-by-one-error, the problem.
 
-        - Above does not apply to the optimised solution, because it does without unordered_maps. 
+        - Above does not apply to the optimised solution, because it does without unordered_maps and uses
+          std::priority_queue
 */
 
 using aocutil::Vec2; 
+using aocutil::Direction; 
+using aocutil::dir_to_vec2; 
+using aocutil:: dir_get_left_right; 
 using aocutil::Grid; 
-
-constexpr Vec2<int> dir_right = {.x = 1, .y = 0};
-constexpr Vec2<int> dir_left = {.x = -1, .y = 0};
-constexpr Vec2<int> dir_up = {.x = 0, .y = -1};
-constexpr Vec2<int> dir_down = {.x = 0, .y = 1};
 
 void parse_grid(const std::vector<std::string>& lines, Grid<int>& grid)
 {
@@ -44,174 +43,143 @@ void parse_grid(const std::vector<std::string>& lines, Grid<int>& grid)
 constexpr int infinity = std::numeric_limits<int>::max();
 
 struct State {
-    Vec2<int> pos, dir; 
+    Vec2<int> pos; 
+    Direction dir; 
     int straight_cnt; 
-
-    int cost = infinity;
-    bool visited = false;
-
-    auto operator<=>(const State& other) const {return cost - other.cost;};
-    bool operator==(const State& other) const {return pos == other.pos && dir == other.dir && straight_cnt == other.straight_cnt;};
 };
 
-std::pair<Vec2<int>, Vec2<int>> get_left_right(const Vec2<int>& dir)
-{
-    if (dir == dir_right) {
-        return {dir_up, dir_down}; 
-    } else if (dir == dir_left) {
-        return {dir_down, dir_up}; 
-    } 
-    else if (dir == dir_up) {
-        return {dir_left, dir_right}; 
-    } else if (dir == dir_down) {
-        return {dir_right, dir_left};
-    }
-    throw std::invalid_argument("get_left_right: Invalid direction");
-}
-
-
-constexpr int max_straight_steps_limit = 11; 
+constexpr int max_straight_steps_limit = 10; 
 constexpr int num_directions = 4; 
-constexpr int max_states_per_cell = num_directions * max_straight_steps_limit; 
+constexpr int max_states_per_cell = num_directions * (max_straight_steps_limit + 1); 
 
-int calc_state_idx(const State& s)
+struct CostGridCell 
 {
-    int idx = 0; 
-    if (s.dir == dir_up) {
-        idx = 1 * max_straight_steps_limit; 
-    } else if (s.dir == dir_right) {
-        idx = 2 * max_straight_steps_limit; 
-    } else if (s.dir == dir_down) {
-        idx = 3 * max_straight_steps_limit;
-    }
-    idx += s.straight_cnt; 
-    assert(idx < max_states_per_cell); 
-    return idx; 
-}
+private: 
+    std::array<int, max_states_per_cell> id_to_cost;
 
-struct StateCell 
-{
-    std::array<State, max_states_per_cell> states; 
-    std::size_t size = 0; 
-
-    using StateArrIter = typename decltype(states)::iterator; 
-
-    StateArrIter insert(const State& s)
+    constexpr int calc_state_idx(const State& s) const
     {
-        assert(size < states.size()); 
-        states[size] = s; 
-        return states.begin() + (size++);
-    }
-
-    std::optional<StateArrIter> find(const State& s)
-    {
-        auto end_it = states.begin() + size; 
-        auto it = std::find(states.begin(), end_it, s); 
-        if (it != end_it) {
-            return it; 
+        int idx = 0; 
+        if (s.dir == Direction::Up) {
+            idx = 1 * max_straight_steps_limit; 
+        } else if (s.dir == Direction::Right) {
+            idx = 2 * max_straight_steps_limit; 
+        } else if (s.dir == Direction::Down) {
+            idx = 3 * max_straight_steps_limit;
         } else {
-            return {}; 
+            assert(s.dir == Direction::Left); 
+        }
+        idx += s.straight_cnt; 
+        assert(idx >= 0); 
+        assert(idx < std::ssize(id_to_cost));
+        return idx; 
+    }
+
+public:
+    CostGridCell() 
+    {
+        for (auto& cost : id_to_cost) {
+            cost = infinity;  
         }
     }
+
+    void save_cost(const State& s, int cost)
+    {
+        int idx = calc_state_idx(s);
+        id_to_cost.at(idx) = cost; 
+    }
+
+    int get_cost(const State& s) const
+    {
+        int idx = calc_state_idx(s); 
+        return id_to_cost.at(idx); 
+    }
 };
 
-std::vector<StateCell::StateArrIter> find_adjacent(const Grid<int>& grid, Grid<StateCell>& state_grid, const State& s, int min_steps, int max_steps)
+std::vector<State> find_adjacent(const Grid<int>& grid, const State& s, int min_steps, int max_steps)
 {   
-    std::vector<StateCell::StateArrIter> adj; 
-
+    std::vector<State> adj; 
     if (s.straight_cnt >= min_steps) {
-        const auto [left_dir, right_dir] = get_left_right(s.dir); 
-        Vec2<int> left_pos = s.pos + left_dir;
-        Vec2<int> right_pos = s.pos + right_dir;
+        const auto [left_dir, right_dir] = dir_get_left_right(s.dir); 
+        Vec2<int> left_pos = s.pos + dir_to_vec2<int>(left_dir);
+        Vec2<int> right_pos = s.pos + dir_to_vec2<int>(right_dir);
 
         if (grid.pos_on_grid(left_pos)) {
-            State state {.pos = left_pos, .dir = left_dir, .straight_cnt = 1, .cost = infinity, .visited = false};
-            auto found = state_grid.at(state.pos).find(state);
-            if (found) {
-                adj.push_back(found.value());
-            } else {
-                adj.push_back(state_grid.at(state.pos).insert(state));
-            }
+            adj.emplace_back(State{.pos = left_pos, .dir = left_dir, .straight_cnt = 1}); 
         }
 
         if (grid.pos_on_grid(right_pos)) {
-            State state {.pos = right_pos, .dir = right_dir, .straight_cnt = 1, .cost = infinity, .visited = false}; 
-            auto found = state_grid.at(state.pos).find(state);
-            if (found) {
-                adj.push_back(found.value());
-            } else {
-                adj.push_back(state_grid.at(state.pos).insert(state));
-            }
+            adj.emplace_back(State{.pos = right_pos, .dir = right_dir, .straight_cnt = 1});
         }
     }
 
     if (s.straight_cnt < max_steps) {
-        Vec2<int> straight_pos = s.pos + s.dir; 
+        Vec2<int> straight_pos = s.pos + dir_to_vec2<int>(s.dir); 
         if (grid.pos_on_grid(straight_pos)) {
-            State state {.pos = straight_pos, .dir = s.dir, .straight_cnt = s.straight_cnt + 1, .cost = infinity, .visited = false}; 
-            auto found = state_grid.at(state.pos).find(state);
-            if (found) {
-                adj.push_back(found.value());
-            } else {
-                adj.push_back(state_grid.at(state.pos).insert(state));
-            }
+            adj.emplace_back(State{.pos = straight_pos, .dir = s.dir, .straight_cnt = s.straight_cnt + 1}); 
         }
     }
 
     return adj;
 }
 
+/* 
+    Dijkstra implemented using array-based priority queues without "decrease-priority" functionality: 
+    cf. https://en.wikipedia.org/wiki/Dijkstra's_algorithm#Using_a_priority_queue 
+        https://cs.stackexchange.com/questions/118388/dijkstra-without-decrease-key (last retrieved 2024-06-22)
+*/
 int find_shortest_path(const Grid<int>& grid, int min_straight_steps = 0, int max_straight_steps = 3)
 {
+    if (max_straight_steps > max_straight_steps_limit) {
+        throw std::invalid_argument("find_shortest_path: max_straight_steps > max_straight_steps_limit, increase the limit");
+    }
+
     const Vec2<int> end_pos = {grid.width() - 1, grid.height() - 1}; 
 
-    State start_r = {.pos = {0, 0}, .dir = dir_right, .straight_cnt = 0, .cost = 0, .visited = false}; 
-    State start_d = {.pos = {0, 0}, .dir = dir_down, .straight_cnt = 0, .cost = 0, .visited = false};
+    State start_r = {.pos = {0, 0}, .dir = Direction::Right, .straight_cnt = 0}; 
+    State start_d = {.pos = {0, 0}, .dir = Direction::Down, .straight_cnt = 0};
 
-    std::priority_queue<State, std::vector<State>, std::greater<State>> queue; 
-    queue.push(start_r);
-    queue.push(start_d);
+    using CostStatePair = typename std::pair<int, State>; 
+    const auto cmp_prio = [](const CostStatePair& a, const CostStatePair& b) -> bool {
+        return a.first > b.first; 
+    };
+    std::priority_queue<CostStatePair, std::vector<CostStatePair>, decltype(cmp_prio)> queue(cmp_prio); 
+    queue.push(CostStatePair{0, start_r});
+    queue.push(CostStatePair{0, start_d});
 
-    Grid<StateCell> state_grid;
+    Grid<CostGridCell> cost_grid;
     for (int y = 0; y < grid.height(); ++y) {
-        state_grid.push_row(std::vector<StateCell>(grid.width(), StateCell{.size = 0}));
+        cost_grid.push_row(std::vector<CostGridCell>(grid.width(), CostGridCell()));
     }
-
-    state_grid.at(start_r.pos).insert(start_r);
-    state_grid.at(start_d.pos).insert(start_d);
-
-    int min_cost = infinity; 
+    cost_grid.at(start_r.pos).save_cost(start_r, 0);
+    cost_grid.at(start_d.pos).save_cost(start_d, 0);
     
     while (!queue.empty()) {
-        const State current = queue.top();
+        const auto [priority, current] = queue.top();
         queue.pop();
-
-        auto current_ref = state_grid.at(current.pos).find(current);
-        assert(current_ref); 
-
-        if (current_ref.value()->visited) {
-            continue;
-        } 
-        current_ref.value()->visited = true;
+        
+        int current_cost = cost_grid.at(current.pos).get_cost(current); 
 
         if (current.pos == end_pos && current.straight_cnt >= min_straight_steps) {
-            std::cout << "q: " << queue.size() << "\n";
-            return current.cost;
+            return current_cost;
         }
-    
 
-        for (StateCell::StateArrIter adj: find_adjacent(grid, state_grid, current, min_straight_steps, max_straight_steps)) {
-            if (adj->visited) {
-                continue;
-            }
-            if (int new_cost = current.cost + grid.at(adj->pos); new_cost <= adj->cost) {
-                adj->cost = new_cost;
-                queue.push(*adj);
+        if (priority != current_cost) { // State was already in queue. 
+            assert(priority > current_cost);
+            continue;
+        }
+
+        for (State adj : find_adjacent(grid, current, min_straight_steps, max_straight_steps)) {
+            int adj_cost = cost_grid.at(adj.pos).get_cost(adj);
+            if (int new_cost = current_cost + grid.at(adj.pos); new_cost < adj_cost) { // Must not be new_cost <= adj_cost
+                cost_grid.at(adj.pos).save_cost(adj, new_cost);
+                assert(new_cost != infinity);
+                queue.emplace(new_cost, adj);
             }
         }
     }
 
-    return min_cost;
+    return infinity;
 }
 
 int part_one(const std::vector<std::string>& lines)
