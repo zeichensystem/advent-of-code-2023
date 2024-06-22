@@ -8,7 +8,7 @@
   
     Solutions: 
         - Part 1: 48652
-        - Part 2: 
+        - Part 2: 45757884535661
     Notes:  
         - First idea: Calculate the area of the polygon 
         -> found https://en.wikipedia.org/wiki/Shoelace_formula#Trapezoid_formula_2 (last retrieved 2024-06-22)
@@ -16,33 +16,54 @@
         -> found https://en.wikipedia.org/wiki/Pick's_theorem (last retrieved 2024-06-22)
            to calculate the inside points from the boundary points and area of the polygon
 
-        - I think the derivation of the trapezoid formula is intuitive, but I don't understand how Pick's theorem works. 
-
+        - I think the derivation of the trapezoid formula is intuitive 
+         (the German wikipedia has a nice diagram, cf. https://de.wikipedia.org/wiki/Gaußsche_Trapezformel#/media/Datei:Trapez-formel-prinz.svg), 
+         but I don't understand how Pick's theorem works. 
 */
 
-using aocutil::Vec2; 
+using Vec2 = typename aocutil::Vec2<int64_t>; 
 
-std::pair<Vec2<int>, Vec2<int>> parse_edge(const std::string& line, std::string& clr_str, Vec2<int>& prev_end_vert, int64_t& boundary_points)
+std::pair<Vec2, Vec2> parse_edge(const std::string& line, Vec2& prev_end_vert, int64_t& boundary_points, bool part_2 = false)
 {
-    std::pair<Vec2<int>, Vec2<int>> edge; 
+    std::pair<Vec2, Vec2> edge; 
 
     std::vector<std::string> toks; 
     aocio::line_tokenise(line, " ", "", toks);
     assert(toks.size() == 3); 
 
     std::string dir = toks.at(0);
-    int steps = aocio::parse_num(toks.at(1)).value(); 
-    clr_str = toks.at(2); 
+    int64_t steps = aocio::parse_num(toks.at(1)).value(); 
+
+    if (part_2) {
+        std::string clr_str = toks.at(2); 
+        // Remove leading '(#' and trailing ')'
+        clr_str =  clr_str.substr(2, clr_str.size()); 
+        clr_str = clr_str.substr(0, clr_str.size() - 1); 
+        // Now we have a six digit hex number; the first five digits represent the steps.
+        steps = aocio::parse_hex(clr_str.substr(0, 5)).value();  
+        // The last digit is a number representing the direction.
+        int dir_int = aocio::parse_hex(clr_str.substr(5, 1)).value();
+        assert(dir_int <= 3); 
+        if (dir_int == 0) {
+            dir = "R"; 
+        } else if (dir_int == 1) {
+            dir = "D"; 
+        } else if (dir_int == 2) {
+            dir = "L";
+        } else {
+            dir = "U";
+        }
+    }
 
     if (dir == "R") {
-        edge.second = prev_end_vert + Vec2<int>{steps, 0}; 
+        edge.second = prev_end_vert + Vec2{steps, 0}; 
     } else if (dir == "L") {
-        edge.second = prev_end_vert - Vec2<int>{steps, 0}; 
+        edge.second = prev_end_vert - Vec2{steps, 0}; 
     } 
     else if (dir == "U") {
-        edge.second = prev_end_vert - Vec2<int>{0, steps}; 
+        edge.second = prev_end_vert - Vec2{0, steps}; 
     } else if (dir == "D") {
-        edge.second = prev_end_vert + Vec2<int>{0, steps}; 
+        edge.second = prev_end_vert + Vec2{0, steps}; 
     } else {
         assert(false);
     }
@@ -53,9 +74,9 @@ std::pair<Vec2<int>, Vec2<int>> parse_edge(const std::string& line, std::string&
     return edge;
 }
 
-int64_t part_one(const std::vector<std::string>& lines)
+int64_t part_one(const std::vector<std::string>& lines, bool part_2 = false)
 {
-    Vec2<int> prev_end_vert = {0, 0}; 
+    Vec2 prev_end_vert = {0, 0}; 
 
     int64_t area = 0; 
     int64_t boundary_points = 0; 
@@ -64,8 +85,8 @@ int64_t part_one(const std::vector<std::string>& lines)
             continue;
         }
         std::string clr_str; 
-        std::pair<Vec2<int>, Vec2<int>> edge = parse_edge(line, clr_str, prev_end_vert, boundary_points); 
-        area += (edge.first.y + edge.second.y) * (edge.first.x - edge.second.x); 
+        std::pair<Vec2, Vec2> edge = parse_edge(line, prev_end_vert, boundary_points, part_2); 
+        area += (edge.first.y + edge.second.y) * (edge.first.x - edge.second.x); // Trapezoid formula. 
     }
     area = std::abs(area) / 2; // Trapezoid formula.  
 
@@ -75,7 +96,7 @@ int64_t part_one(const std::vector<std::string>& lines)
 
 int64_t part_two(const std::vector<std::string>& lines)
 {
-    return -1; 
+    return part_one(lines, true);
 }
 
 int main()

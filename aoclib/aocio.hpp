@@ -92,6 +92,30 @@ static inline std::optional<int> parse_digit(char c)
     }
 }
 
+template <typename IntT = int>
+static inline std::optional<IntT> parse_hex(std::string_view str)
+{
+    IntT res = 0; 
+    IntT fac = 1; 
+    for (int i = str.size() - 1; i >= 0; --i, fac *= 16) {
+        char sym = str.at(i); 
+        IntT digit = 0; 
+        if (sym >= '0' && sym <= '9') {
+            digit = aocio::parse_digit(sym).value(); 
+        } else {
+            digit = 10 + (sym - 'a'); 
+            if (digit < 10 || digit > 15) { // Try uppercase. 
+                digit = 10 + (sym - 'A'); 
+            }
+            if (digit < 10 || digit > 15) {
+                return {};
+            }
+        }
+        res += digit * fac;
+    }
+    return res; 
+}
+
 inline void print_day() 
 {
     std::string day_name {std::filesystem::path(AOC_INPUT_DIR).parent_path().filename()};
@@ -109,5 +133,4 @@ inline void print_day()
 
     std::cout << day_name << " (" << debug_release << ")\n";
 }
-
 }
