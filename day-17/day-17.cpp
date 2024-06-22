@@ -128,6 +128,12 @@ std::array<State, 3> find_adjacent(const Grid<int>& grid, const State& s, int mi
     return adj;
 }
 
+int heuristic(const Vec2<int>& pos, const Vec2<int>& end_pos)
+{
+    return 0; 
+    // return std::abs(end_pos.x - pos.x) + std::abs(end_pos.y - pos.x);
+}
+
 /* 
     Dijkstra implemented using array-based priority queues without "decrease-priority" functionality: 
     cf. https://en.wikipedia.org/wiki/Dijkstra's_algorithm#Using_a_priority_queue 
@@ -149,8 +155,8 @@ int find_shortest_path(const Grid<int>& grid, int min_straight_steps = 0, int ma
         return a.first > b.first; 
     };
     std::priority_queue<CostStatePair, std::vector<CostStatePair>, decltype(cmp_prio)> queue(cmp_prio); 
-    queue.push(CostStatePair{0, start_r});
-    queue.push(CostStatePair{0, start_d});
+    queue.push(CostStatePair{heuristic(start_r.pos, end_pos), start_r});
+    queue.push(CostStatePair{heuristic(start_d.pos, end_pos), start_d});
 
     Grid<CostGridCell> cost_grid;
     for (int y = 0; y < grid.height(); ++y) {
@@ -168,8 +174,8 @@ int find_shortest_path(const Grid<int>& grid, int min_straight_steps = 0, int ma
         if (current.pos == end_pos && current.straight_cnt >= min_straight_steps) {
             return current_cost;
         }
-
-        if (priority != current_cost) { // State was already in queue. 
+        
+        if (priority != current_cost + heuristic(current.pos, end_pos)) { // State was already in queue. 
             assert(priority > current_cost);
             continue;
         }
@@ -182,11 +188,10 @@ int find_shortest_path(const Grid<int>& grid, int min_straight_steps = 0, int ma
             if (int new_cost = current_cost + grid.at(adj.pos); new_cost < adj_cost) { // Must not be new_cost <= adj_cost
                 cost_grid.at(adj.pos).save_cost(adj, new_cost);
                 assert(new_cost != infinity);
-                queue.emplace(new_cost, adj);
+                queue.emplace(new_cost + heuristic(adj.pos, end_pos), adj);
             }
         }
     }
-
     return infinity;
 }
 
@@ -214,14 +219,11 @@ int main()
         std::cerr << "Error: " << "File '" << fname << "' not found\n";
         return EXIT_FAILURE;
     }    
-    try {
-        int p1 = part_one(lines);  
-        std::cout << "Part 1: " << p1 << "\n";
-        int p2 = part_two(lines);
-        std::cout << "Part 2: " << p2 << "\n";
-    } catch (const std::exception& err) {
-        std::cerr << "Error: " << err.what() << "\n";
-        return EXIT_FAILURE;
-    }
+   
+    int p1 = part_one(lines);  
+    std::cout << "Part 1: " << p1 << "\n";
+    int p2 = part_two(lines);
+    std::cout << "Part 2: " << p2 << "\n";
+    
     return EXIT_SUCCESS;
 }
