@@ -24,7 +24,7 @@
 using aocutil::Vec2; 
 using aocutil::Direction; 
 using aocutil::dir_to_vec2; 
-using aocutil:: dir_get_left_right; 
+using aocutil::dir_get_left_right; 
 using aocutil::Grid; 
 
 void parse_grid(const std::vector<std::string>& lines, Grid<int>& grid)
@@ -96,27 +96,32 @@ public:
     }
 };
 
-std::vector<State> find_adjacent(const Grid<int>& grid, const State& s, int min_steps, int max_steps)
+std::array<State, 3> find_adjacent(const Grid<int>& grid, const State& s, int min_steps, int max_steps, int &size)
 {   
-    std::vector<State> adj; 
+    std::array<State, 3> adj; 
+    size = 0; 
+
     if (s.straight_cnt >= min_steps) {
         const auto [left_dir, right_dir] = dir_get_left_right(s.dir); 
         Vec2<int> left_pos = s.pos + dir_to_vec2<int>(left_dir);
         Vec2<int> right_pos = s.pos + dir_to_vec2<int>(right_dir);
 
         if (grid.pos_on_grid(left_pos)) {
-            adj.emplace_back(State{.pos = left_pos, .dir = left_dir, .straight_cnt = 1}); 
+            assert(size < std::ssize(adj));
+            adj.at(size++) = State{.pos = left_pos, .dir = left_dir, .straight_cnt = 1}; 
         }
 
         if (grid.pos_on_grid(right_pos)) {
-            adj.emplace_back(State{.pos = right_pos, .dir = right_dir, .straight_cnt = 1});
+            assert(size < std::ssize(adj));
+            adj.at(size++) = (State{.pos = right_pos, .dir = right_dir, .straight_cnt = 1});
         }
     }
 
     if (s.straight_cnt < max_steps) {
         Vec2<int> straight_pos = s.pos + dir_to_vec2<int>(s.dir); 
         if (grid.pos_on_grid(straight_pos)) {
-            adj.emplace_back(State{.pos = straight_pos, .dir = s.dir, .straight_cnt = s.straight_cnt + 1}); 
+            assert(size < std::ssize(adj));
+            adj.at(size++) = (State{.pos = straight_pos, .dir = s.dir, .straight_cnt = s.straight_cnt + 1}); 
         }
     }
 
@@ -168,8 +173,11 @@ int find_shortest_path(const Grid<int>& grid, int min_straight_steps = 0, int ma
             assert(priority > current_cost);
             continue;
         }
-
-        for (State adj : find_adjacent(grid, current, min_straight_steps, max_straight_steps)) {
+        
+        int num_neighbors = 0; 
+        auto neighbors = find_adjacent(grid, current, min_straight_steps, max_straight_steps, num_neighbors);
+        for (int i = 0; i < num_neighbors; ++i) {
+            State adj = neighbors[i]; 
             int adj_cost = cost_grid.at(adj.pos).get_cost(adj);
             if (int new_cost = current_cost + grid.at(adj.pos); new_cost < adj_cost) { // Must not be new_cost <= adj_cost
                 cost_grid.at(adj.pos).save_cost(adj, new_cost);
