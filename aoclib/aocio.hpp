@@ -35,6 +35,21 @@ inline bool file_getlines(std::string_view fname, std::vector<std::string>& line
     return true;
 }
 
+inline void remove_leading_empty_lines(std::vector<std::string>& lines)
+{
+    auto line = lines.begin(); 
+    while (line != lines.end()) {
+        std::size_t idx = line->find_first_not_of(" \t", 0); 
+        if (idx == std::string::npos) {
+            lines.erase(line);
+            line = lines.begin();
+        } else {
+            assert(line->size());
+            break;
+        }
+    }
+}
+
 inline void line_tokenise(const std::string& line, const std::string& delims, const std::string& preserved_delims, std::vector<std::string>& tokens)
 {
     for (char d : preserved_delims) {
@@ -61,6 +76,22 @@ inline void line_tokenise(const std::string& line, const std::string& delims, co
         start_pos = token_end_pos + 1;
     }
 }
+
+static inline std::string str_without_whitespace(std::string_view str) 
+{
+    std::string result; 
+    auto is_ws = [](char c) -> bool { return c == ' ' || c == '\t'; }; 
+    std::remove_copy_if(str.cbegin(), str.cend(), std::back_inserter(result), is_ws);
+    return result;
+}
+
+static inline void str_remove_whitespace(std::string& str) 
+{
+    auto is_ws = [](char c) -> bool { return c == ' ' || c == '\t'; }; 
+    auto no_space_end = std::remove_if(str.begin(), str.end(), is_ws);
+    str.erase(no_space_end, str.end());
+}
+
 
 static inline std::optional<int> parse_num(const std::string &str)
 {

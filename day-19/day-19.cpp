@@ -1,4 +1,5 @@
 #include <unordered_map>
+#include <array>
 #include "../aoclib/aocio.hpp"
 
 /*
@@ -6,18 +7,71 @@
   
     Solutions: 
         - Part 1: 348378
-        - Part 2: 
+        - Part 2: 121158073425385
     Notes:  
+        - Part 1: 
+            - Essentially just the parsing, and then following each part from workflow to workflow :)
+        - Part 2:
+            - Was challenging, in a fun way! 
+            - My approach is building a tree of all possible paths from the root "in" workflow to "A" or "R".
+              (E.g. the "in" root node has one child node for each of its rules, plus one child if no rules match.)
+            - For each node in the tree of paths, we can calculate a combined rule which a part has to match to 
+              reach that node. (The "in" root node has a combined rule which matches all valid parts.)
+            - After the tree of all possible paths was built, we can follow each path,
+              and when "A" is the leaf node of the given path, we calculate the number of rating-combinations
+              which satisfy the combined rule at the leaf node, and add it to the total.
+            - Takes about 10 ms to solve both parts on my laptop. 
 */
 
 enum class Operator {LessThan, GreaterThan}; 
 enum class OperandType {x, m, a, s}; 
 
-struct Rule {
+struct Rule 
+{
     OperandType operand_type; 
     Operator cmp; 
     int operand_rhs; 
     std::string send_to; 
+
+    Rule inverted() const 
+    {
+        Rule inv = *this;  
+        if (cmp == Operator::LessThan) {
+            inv.cmp = Operator::GreaterThan; 
+            inv.operand_rhs = operand_rhs - 1;
+        } else if (cmp == Operator::GreaterThan) {
+            inv.cmp =  Operator::LessThan; 
+            inv.operand_rhs = operand_rhs + 1;
+        } else {
+            assert(false); 
+        }
+        return inv;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const Rule& rule) 
+    {
+        char operand_sym = '?';
+        if (rule.operand_type == OperandType::x) {
+            operand_sym = 'x'; 
+        } else if (rule.operand_type == OperandType::m) {
+            operand_sym = 'm'; 
+        } else if (rule.operand_type == OperandType::a) {
+            operand_sym = 'a'; 
+        } else if (rule.operand_type == OperandType::s) {
+            operand_sym = 's'; 
+        } else {
+            assert(false);
+        }
+        char cmp_sym = '?'; 
+        if (rule.cmp == Operator::LessThan) {
+            cmp_sym = '<'; 
+        } else if (rule.cmp == Operator::GreaterThan) {
+            cmp_sym = '>'; 
+        } else {
+            assert(false);
+        }
+        return os << operand_sym << " " << cmp_sym << " " << rule.operand_rhs; 
+    }
 }; 
 
 struct Part 
@@ -173,6 +227,7 @@ void parse_parts(const std::string& line, std::vector<Part>& parts)
     aocio::line_tokenise(line, ",{}", "{}", toks);
 
     if (toks.size() != 6) {
+        std::cout << line << "\n";
         throw std::invalid_argument("parse_parts: Invalid length"); 
     }
     if (toks.at(0) != "{" || toks.back() != "}") {
@@ -247,19 +302,16 @@ int64_t part_one(const std::vector<std::string>& lines)
     std::vector<Part> parts; 
 
     bool in_workflows = true; 
-    for (const auto& line : lines) {
+    for (std::string line : lines) {
+        aocio::str_remove_whitespace(line);
         if (line.size() == 0) {
             in_workflows = false; 
+            continue;
         }
-
-        std::string line_without_whitespace = ""; 
-        auto is_ws = [](char c) -> bool { return c == ' ' || c == '\t'; }; 
-        std::remove_copy_if(line.cbegin(), line.cend(), std::back_inserter(line_without_whitespace), is_ws);
-        
         if (in_workflows) {
-            parse_workflow(line_without_whitespace, workflows); 
+            parse_workflow(line, workflows); 
         } else { 
-            parse_parts(line_without_whitespace, parts);
+            parse_parts(line, parts);
         }
     }
 
@@ -267,7 +319,6 @@ int64_t part_one(const std::vector<std::string>& lines)
     for (const Part& part : parts) {
         std::string workflow_name = "in"; 
         while (workflow_name != "A" && workflow_name != "R") {
-            // std::cout << workflow_name << "->";
             bool matched_rule = false; 
             for (const Rule& rule : workflows.at(workflow_name).rules) {
                 if (part.matches(rule)) {
@@ -280,19 +331,151 @@ int64_t part_one(const std::vector<std::string>& lines)
                 workflow_name = workflows.at(workflow_name).no_rule_matches_send_to;
             }
         }
-        // std::cout << workflow_name << "\n";
-
         if (workflow_name == "A") {
             accepted_rating_sum += part.rating_sum();
         }
     }
-
     return accepted_rating_sum;
+}
+
+struct CombinedRule 
+{
+    struct MinMax {
+        int min = 1, max = 4000; 
+    };
+
+    std::array<MinMax, 4> min_max; // One MinMax for each of the OperandTypes x, m, a, s
+
+    void combine(const Rule& rule) 
+    {
+        int min_max_idx = 0; 
+        switch (rule.operand_type)
+        {
+        case OperandType::x:
+            min_max_idx = 0; 
+            break; 
+        case OperandType::m: 
+            min_max_idx = 1; 
+            break; 
+        case OperandType::a: 
+            min_max_idx = 2; 
+            break; 
+        case OperandType::s: 
+            min_max_idx = 3; 
+            break; 
+        default: 
+            assert(false);
+        }
+
+        MinMax& min_max_elem = min_max.at(min_max_idx);
+        if (rule.cmp == Operator::LessThan) {
+            min_max_elem.max = std::min(min_max_elem.max, rule.operand_rhs - 1);
+        } else if (rule.cmp == Operator::GreaterThan) {
+            min_max_elem.min = std::max(min_max_elem.min, rule.operand_rhs + 1);
+        } else {
+            assert(false);
+        }     
+    }
+
+    // How many distinct rating combinations can satisfy the combined rule:
+    int64_t get_combinations() const  
+    {
+        int64_t total = 1; 
+        for (const MinMax& mm : min_max) {
+            if (mm.max < mm.min) {
+                return 0; 
+            }
+            total *= (mm.max - mm.min) + 1;
+        }
+        return total;
+    }
+};
+
+/*
+    When a given workflow has n rules, we can take n + 1 distincts paths
+    to reach the next workflows (one for each of the rules, and one if no rules match).
+    We will build a tree from the "in" workflow until we reach "A" or "R". 
+*/ 
+struct Path {  
+    std::string wf_name; 
+    CombinedRule combined_rule; // The rules a part must satisfy to reach the current node of the path.
+    std::vector<Path> children; 
+};
+
+/* 
+    Builds a tree of all possible paths starting from parent.
+*/
+void build_paths(const std::unordered_map<std::string, Workflow>& workflows, Path& parent)
+{
+    const std::string& wf_name = parent.wf_name; 
+    if (!workflows.contains(wf_name)) { // Reached a leaf-node ("A" or "R")
+        return;
+    }
+
+    // 1.) Calculate all child nodes.
+    const Workflow& wf = workflows.at(wf_name);
+    std::vector<Rule> inv_rules;
+    // 1.1.) Calculate the child nodes for each rule of the current node.
+    for (const Rule& rule : wf.rules) {
+        CombinedRule combined = parent.combined_rule; 
+        combined.combine(rule);
+        // For rule to match, all previous rules of the current node up to rule must not me matched.
+        for (const Rule& inv_rule : inv_rules) { 
+            combined.combine(inv_rule);
+        }
+        inv_rules.push_back(rule.inverted());
+        parent.children.push_back(Path{.wf_name = rule.send_to, .combined_rule = combined}); 
+    }
+    // 1.2) Calculate the child node for the implicit rule if none of the rules in the current node are matched.
+    CombinedRule combined = parent.combined_rule; 
+    for (const Rule& inv_rule : inv_rules) {
+        combined.combine(inv_rule);
+    }
+    parent.children.push_back(Path{.wf_name = wf.no_rule_matches_send_to, .combined_rule = combined}); 
+
+    // 2.) For each child node, calculate their child nodes recursively. 
+    for (Path& child : parent.children) {
+        build_paths(workflows, child);
+    }
+}
+
+/*
+    Depth-first traversal of the tree. 
+    When an "A"-leaf-node is reached, calculate the number of rating-combinations, and add it to the total.
+*/
+void follow_path(const std::unordered_map<std::string, Workflow>& workflows, const Path& parent, int64_t& accepted_ratings)
+{
+    if (!workflows.contains(parent.wf_name)) { // We Reached a leaf node (Either "R" or "A")
+        if (parent.wf_name != "A") {
+            return;
+        }
+        accepted_ratings += parent.combined_rule.get_combinations();
+        return;
+    }
+
+    for (const Path& child : parent.children) {
+        follow_path(workflows, child, accepted_ratings);
+    }
 }
 
 int64_t part_two(const std::vector<std::string>& lines)
 {
-    return -1;
+    std::unordered_map<std::string, Workflow> workflows; 
+
+    for (std::string line : lines) {
+        aocio::str_remove_whitespace(line);
+        if (line.size() == 0) {
+            break;
+        } 
+        parse_workflow(line, workflows); 
+    }
+
+    Path path = {.wf_name = "in"};
+    build_paths(workflows, path);
+    int64_t accepted_combinations = 0; 
+    follow_path(workflows, path, accepted_combinations);
+
+    return accepted_combinations;
 }
 
 int main()
@@ -305,6 +488,13 @@ int main()
         std::cerr << "Error: " << "File '" << fname << "' not found\n";
         return EXIT_FAILURE;
     }    
+
+    aocio::remove_leading_empty_lines(lines);
+    if (!lines.size()) {
+        std::cerr << "Error: " << "Input is empty";
+        return EXIT_FAILURE;
+    }
+
     try {
         int64_t p1 = part_one(lines);  
         std::cout << "Part 1: " << p1 << "\n";
@@ -314,6 +504,6 @@ int main()
         std::cerr << "Error: " << err.what() << "\n";
         return EXIT_FAILURE;
     }
-    
+
     return EXIT_SUCCESS;
 }
