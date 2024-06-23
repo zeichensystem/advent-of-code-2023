@@ -95,9 +95,34 @@ static inline std::optional<int> parse_digit(char c)
 template <typename IntT = int>
 static inline std::optional<IntT> parse_hex(std::string_view str)
 {
+    if (str.size() == 0) {
+        return {};
+    }
+
+    int prefix = 0; 
+    while (str.at(prefix) == ' ' || str.at(prefix) == '\t') { // Remove leading whitespace
+        ++prefix; 
+    }
+    str = str.substr(prefix, str.size());
+
+    if (str.size() >= 2) { // Handle # and 0x prefixes
+        if (str.at(0) == '#') {
+            str = str.substr(1, str.size());
+        } else if (str.size() >= 3) {
+            if (str.at(0) == '0' && str.at(1) == 'x') {
+                str = str.substr(2, str.size());
+            }
+        }
+    } 
+ 
+    int end_idx = std::ssize(str) - 1; 
+    while (str.at(end_idx) == ' ' || str.at(end_idx) == '\t') { // Remove trailing whitespace. 
+        end_idx -= 1; 
+    }
+
     IntT res = 0; 
     IntT fac = 1; 
-    for (int i = str.size() - 1; i >= 0; --i, fac *= 16) {
+    for (int i = end_idx; i >= 0; --i, fac *= 16) {
         char sym = str.at(i); 
         IntT digit = 0; 
         if (sym >= '0' && sym <= '9') {

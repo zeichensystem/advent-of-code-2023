@@ -219,11 +219,14 @@ int main()
         std::cerr << "Error: " << "File '" << fname << "' not found\n";
         return EXIT_FAILURE;
     }    
-   
-    int p1 = part_one(lines);  
-    std::cout << "Part 1: " << p1 << "\n";
-    int p2 = part_two(lines);
-    std::cout << "Part 2: " << p2 << "\n";
-    
+    try {
+        int p1 = part_one(lines);  
+        std::cout << "Part 1: " << p1 << "\n";
+        int p2 = part_two(lines);
+        std::cout << "Part 2: " << p2 << "\n";
+    } catch (const std::exception& err) {
+        std::cerr << "Error: " << err.what() << "\n";
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }

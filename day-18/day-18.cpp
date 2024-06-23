@@ -1,5 +1,3 @@
-#include <queue>
-#include <array>
 #include "../aoclib/aocio.hpp"
 #include "../aoclib/vec.hpp"
 
@@ -109,11 +107,15 @@ int main()
         std::cerr << "Error: " << "File '" << fname << "' not found\n";
         return EXIT_FAILURE;
     }    
-   
-    int64_t p1 = part_one(lines);  
-    std::cout << "Part 1: " << p1 << "\n";
-    int64_t p2 = part_two(lines);
-    std::cout << "Part 2: " << p2 << "\n";
+    try {
+        int64_t p1 = part_one(lines);  
+        std::cout << "Part 1: " << p1 << "\n";
+        int64_t p2 = part_two(lines);
+        std::cout << "Part 2: " << p2 << "\n";
+    } catch (const std::exception& err) {
+        std::cerr << "Error: " << err.what() << "\n";
+        return EXIT_FAILURE;
+    }
     
     return EXIT_SUCCESS;
 }
