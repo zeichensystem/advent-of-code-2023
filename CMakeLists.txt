@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (APPLE OR UNIX OR LINUX)
-    set(WARNING_FLAGS_CXX -Wall -Wextra -Wpedantic -Wvla -Wshadow -Wundef -Wmisleading-indentation -Wnull-dereference -Wswitch-default -Wno-newline-eof -Wno-unused-function -Wno-unused-parameter)
+    set(WARNING_FLAGS_CXX -Wall -Wextra -Wpedantic -Wvla -Wshadow -Wundef -Wmisleading-indentation -Wnull-dereference -Wshadow  -Wundef  -Wstrict-overflow=5 -Wsign-promo -Wcast-align -Wcast-qual -Woverloaded-virtual -Wredundant-decls -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wswitch-default -Wno-newline-eof -Wno-unused-function -Wno-unused-parameter)
     set(CMAKE_CXX_COMPILER  "/usr/bin/clang++")
 endif ()
 
@@ -34,7 +34,7 @@ if(ipo_available AND (NOT CMAKE_BUILD_TYPE MATCHES Debug) AND (NOT CMAKE_BUILD_T
     message("-- IPO enabled")
 endif()
 
-set(TARGETS day-01 day-02 day-03 day-04 day-05 day-06 day-07 day-08 day-09 day-10 day-11 day-12 day-13 day-14 day-15 day-16 day-17 day-18 day-19) # Add the other days as you please.
+set(TARGETS day-01 day-02 day-03 day-04 day-05 day-06 day-07 day-08 day-09 day-10 day-11 day-12 day-13 day-14 day-15 day-16 day-17 day-18 day-19 day-20) # Add the other days as you please.
 
 list(LENGTH TARGETS NUM_TARGETS)
 
@@ -81,6 +81,7 @@ add_custom_target("run-all"
     COMMAND day-17
     COMMAND day-18
     COMMAND day-19
+    COMMAND day-20
 
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
 )
