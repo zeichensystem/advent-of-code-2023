@@ -50,6 +50,22 @@ inline void remove_leading_empty_lines(std::vector<std::string>& lines)
     }
 }
 
+inline void remove_trailing_empty_lines(std::vector<std::string>& lines)
+{
+    auto line = lines.rbegin(); 
+    while (line != lines.rend()) {
+        std::size_t idx = line->find_first_not_of(" \t", 0); 
+        if (idx == std::string::npos) {
+            lines.erase(std::next(line).base()); // cf. https://stackoverflow.com/questions/1830158/how-to-call-erase-with-a-reverse-iterator [1]
+            line = lines.rbegin();
+        } else {
+            assert(line->size());
+            break;
+        }
+    }
+    // [1] last retrieved 2024-06-25
+}
+
 inline void line_tokenise(const std::string& line, const std::string& delims, const std::string& preserved_delims, std::vector<std::string>& tokens)
 {
     for (char d : preserved_delims) {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <memory>
+#include <array>
 #include "hash.hpp"
 
 namespace aocutil 
@@ -25,6 +25,17 @@ struct Vec2
 };
 
 enum class Direction {Up, Right, Down, Left};
+
+template <typename T, bool up_is_positive = false>
+constexpr std::array<Vec2<T>, 4> all_dirs_vec2() 
+{
+    constexpr Vec2<T> dir_right = {.x = 1, .y = 0};
+    constexpr Vec2<T> dir_left = {.x = -1, .y = 0};
+    constexpr Vec2<T> dir_up   = up_is_positive ? Vec2<T>{.x = 0, .y =  1} : Vec2<T>{.x = 0, .y = -1};
+    constexpr Vec2<T> dir_down = up_is_positive ? Vec2<T>{.x = 0, .y = -1} : Vec2<T>{.x = 0, .y =  1};
+
+    return {dir_right, dir_left, dir_up, dir_down};
+}
 
 template <typename T, bool up_is_positive = false>
 constexpr Vec2<T> dir_to_vec2(Direction dir) 

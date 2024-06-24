@@ -331,6 +331,15 @@ class Grid
         return x + y * width();
     }
 
+    Vec2<int> idx_to_pos(int idx) const 
+    {
+        int y = idx / width(); 
+        int x = idx % width();
+        assert(x >= 0 && x < width());
+        assert(y >= 0 && y < height());
+        return Vec2<int>{.x = x, .y = y};
+    }
+
 public: 
     Grid() = default; 
 
@@ -342,7 +351,9 @@ public:
         width_ = rows.at(0).size();
         height_ = rows.size();
         for (const auto& row : rows) {
-            assert(std::ssize(row) == width_); 
+            if (std::ssize(row) != width_) {
+                throw std::invalid_argument("Grid::Grid: Rows of different width");
+            }
             for (const auto & elem : row) {
                 data.push_back(elem);
             }
@@ -466,10 +477,10 @@ public:
         return GridIteratorMut(width(), height() - 1, this);
     }
 
-    GridIteratorConst cbegin() {
+    GridIteratorConst cbegin() const {
         return GridIteratorConst(0, 0, this);
     }
-    GridIteratorConst cend() {
+    GridIteratorConst cend() const {
         return GridIteratorConst(width(), height() - 1, this);
     }
 
@@ -505,6 +516,28 @@ public:
 
     GridIteratorConst cend_row(int row) const {
         return GridIteratorConst(0, row + 1, this);
+    }
+
+    std::vector<Vec2<int>> find_elem_positions(const ElemType& elem) const
+    {
+        std::vector<Vec2<int>> positions;
+
+        auto start_pos = cbegin(); 
+        std::size_t i = 0; 
+        while (true) {
+            assert(i <= data.size());
+            auto found_pos = std::find(start_pos, cend(), elem); 
+            if (found_pos == cend()) {
+                return positions;
+            } else {
+                int idx = found_pos - cbegin();
+                assert(idx >= 0 && idx < std::ssize(data));
+                positions.push_back(idx_to_pos(idx));
+                start_pos = std::next(found_pos);
+            }
+            ++i; 
+        }
+        assert(false);
     }
 
     friend std::ostream& operator<<(std::ostream& os, const Grid<ElemType>& g) 
