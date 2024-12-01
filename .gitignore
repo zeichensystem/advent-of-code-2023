@@ -2,3 +2,4 @@ build/*
 bin/*
 input/day-??.txt
 .vscode
+**/.DS_Store

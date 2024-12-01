@@ -1,5 +1,5 @@
-# Select debug/release variant: % cmake -DCMAKE_BUILD_TYPE=Debug/Release ../..
-# Build and run: make run-day-XX
+# Select debug/release variant: within build/Release or build/Debug, run: % cmake -DCMAKE_BUILD_TYPE=Debug/Release ../..
+# Build and run: make run-day-XX or cmake --build . --target run_
 
 cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 20)
