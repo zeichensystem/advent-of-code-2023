@@ -12,8 +12,8 @@
 #define AOC_INPUT_PATH ""
 #endif
 
-#ifndef AOC_INPUT_DIR
-#define AOC_INPUT_DIR ""
+#ifndef AOC_SRC_DIR
+#define AOC_SRC_DIR ""
 #endif
 
 namespace aocio 
@@ -190,7 +190,7 @@ static inline std::optional<IntT> parse_hex(std::string_view str)
 
 inline void print_day() 
 {
-    std::string day_name {std::filesystem::path(AOC_INPUT_DIR).parent_path().filename()};
+    std::string day_name {std::filesystem::path(AOC_SRC_DIR).parent_path().filename()};
     
     if (day_name.size()) {
         day_name[0] = std::toupper(day_name[0]);

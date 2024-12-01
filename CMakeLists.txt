@@ -46,8 +46,11 @@ foreach(current_target IN LISTS TARGETS)
     target_link_options(${current_target} PRIVATE ${WARNING_FLAGS_CXX} $<$<CONFIG:Debug>:-fsanitize=undefined,address -g3 -Og>)
     # target_link_libraries(${current_target} aocio)
 
-    target_compile_definitions(${current_target} PRIVATE AOC_INPUT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/${current_target}/input.txt")
-    target_compile_definitions(${current_target} PRIVATE AOC_INPUT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/${current_target}/")
+    target_compile_definitions(${current_target} PRIVATE AOC_INPUT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/input/${current_target}.txt")
+    target_compile_definitions(${current_target} PRIVATE AOC_INPUT_EXAMPLE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/input/${current_target}-example.txt")
+
+    target_compile_definitions(${current_target} PRIVATE AOC_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/${current_target}/")
+
     if(ipo_available AND (NOT CMAKE_BUILD_TYPE MATCHES Debug) AND (NOT CMAKE_BUILD_TYPE MATCHES RelWithDebInfo))
         set_property(TARGET ${current_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()

@@ -482,7 +482,7 @@ int main()
 {
     aocio::print_day();
     std::vector<std::string> lines;
-    std::string_view fname = AOC_INPUT_DIR"input.txt";
+    std::string_view fname = AOC_INPUT_PATH;
     bool file_loaded = aocio::file_getlines(fname, lines);
     if (!file_loaded) {
         std::cerr << "Error: " << "File '" << fname << "' not found\n";

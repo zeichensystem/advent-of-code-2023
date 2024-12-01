@@ -1,4 +1,5 @@
 #include <unordered_map>
+#include <sstream>
 #include "../aoclib/aocio.hpp"
 
 /*
